@@ -10,8 +10,8 @@ import { useUser } from '../context/UserContext';
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState('');
-  const navigate = useNavigate(); 
-  const {login}=useUser()
+  const navigate = useNavigate();
+  const { login } = useUser()
 
   const {
     register,
@@ -23,38 +23,76 @@ const LoginPage = () => {
     setServerError('');
 
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/login', {
+      const response = await axios.post('/api/user/login', {
         email: data.email,
         password: data.password,
       });
 
       console.log('Login successful:', response.data);
       login(response.data.user)
-      
-      // Navigate to dashboard cleanly
-      navigate('/dashboard', { replace: true });
+      const user = response.data.user;
+
+      if (!user.isEmailVerified) {
+        return navigate('/verify');
+      }
+
+      if (user.isPlatformAdmin) {
+        return navigate('/platform-admin');
+      }
+
+      if (!user.memberships || user.memberships.length === 0) {
+        return navigate('/onboarding');
+      }
+
+      const hasVerifiedMembership = user.memberships.some(m => m.isVerified);
+
+      if (!hasVerifiedMembership) {
+        return navigate('/pending-approval');
+      }
+
+      if (!user.activeMembership || !user.activeMembership.college) {
+        return navigate('/select-college');
+      }
+
+      navigate('/dashboard');
+
     } catch (err) {
       setServerError(err.response?.data?.message || 'Failed to connect to the server.');
     }
   };
 
   const handleGoogleSuccess = async (credentialResponse) => {
-    console.log('Google Credential:', credentialResponse);
-    // TODO: Send credentialResponse.credential to your backend for verification
+    console.log('Google Register Credential:', credentialResponse);
+    try {
+      const response = await axios.post('/api/user/google-login', {
+        credentialResponse, // 🔥 THIS is the ID token
+      });
+      login(response.data.user)
+      router.replace('/dashboard');
+    } catch (error) {
+      let message = "Something went wrong";
+
+      if (axios.isAxiosError(error)) {
+        message =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Google login failed";
+      }
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 sm:p-6 lg:p-8 font-sans">
-      
+
       {/* Main Split Layout Card */}
       <div className="w-full max-w-6xl bg-white rounded-[2rem] shadow-2xl flex flex-col md:flex-row overflow-hidden border border-slate-200/60 relative">
-        
+
         {/* Subtle decorative glow to match register page */}
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-sky-500 opacity-5 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
 
         {/* LEFT COLUMN: Branding & Image (Stacks on top for mobile now) */}
         <div className="flex w-full md:w-1/2 bg-slate-50 p-8 sm:p-10 lg:p-16 flex-col justify-center md:justify-between border-b md:border-b-0 md:border-r border-slate-200">
-          
+
           <div className="flex items-center gap-3 mb-6 md:mb-12">
             <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +119,7 @@ const LoginPage = () => {
 
         {/* RIGHT COLUMN: Login Form */}
         <div className="w-full md:w-1/2 p-8 sm:p-10 lg:p-16 flex flex-col justify-center bg-white relative z-10">
-          
+
           <div className="mb-8 md:mb-10">
             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Welcome back</h1>
             <p className="text-slate-500 text-sm mt-2">Enter your credentials to access your workspace.</p>
@@ -94,7 +132,7 @@ const LoginPage = () => {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 md:space-y-6">
-            
+
             {/* Email Field */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Email Address</label>
@@ -102,7 +140,7 @@ const LoginPage = () => {
                 <input
                   type="email"
                   placeholder="name@company.com"
-                  {...register("email", { 
+                  {...register("email", {
                     required: "Email is required",
                     pattern: {
                       value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
@@ -128,7 +166,7 @@ const LoginPage = () => {
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  {...register("password", { 
+                  {...register("password", {
                     required: "Password is required",
                     minLength: { value: 6, message: "Password must be at least 6 characters" }
                   })}

@@ -2,6 +2,39 @@ import mongoose, { Schema } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
+const membershipSchema = new Schema({
+  college: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "College",
+    required: true
+  },
+
+  role: {
+    type: String,
+    enum: ["student", "alumni", "recruiter", "admin", "super_admin"],
+    required: true
+  },
+
+  permissions: [
+    {
+      type: String,
+      enum: [
+        "manage_students",
+        "manage_recruiters",
+        "approve_students",
+        "approve_recruiters",
+        "post_jobs",
+        "moderate_content"
+      ]
+    }
+  ],
+
+  isVerified: {
+    type: Boolean,
+    default: false
+  }
+}, { _id: false });
+
 const userSchema = new Schema(
   {
     name: {
@@ -28,26 +61,37 @@ const userSchema = new Schema(
       default: "local"
     },
 
-    googleId: String,
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true
+    },
 
     avatar: String,
 
-    role: {
-      type: String,
-      required:true,
-      enum: ["student", "alumni", "recruiter", "admin"],
-      default: "student"
-    },
+    // 🔥 NEW CORE SYSTEM
+    memberships: [membershipSchema],
 
-    college: {
+    primaryCollege: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "College"
     },
 
-    location: {
-      type: String,
+    activeMembership: {
+      college: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "College"
+      },
+      role: String
     },
 
+    // 🔒 Platform level super admin (NOT tied to college)
+    isPlatformAdmin: {
+      type: Boolean,
+      default: false
+    },
+
+    location: String,
     branch: String,
     graduationYear: Number,
 
@@ -55,7 +99,6 @@ const userSchema = new Schema(
     position: String,
 
     skills: [String],
-
     bio: String,
 
     github: String,
@@ -103,25 +146,27 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-userSchema.pre("save", async function(){
-  if (!this.isModified("password")) return ;
-
+// 🔐 Password Hash
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
   this.password = await bcrypt.hash(this.password, 10);
 });
 
-userSchema.methods.isPasswordCorrect = async function(password){
-  if(!this.password) return false;
+// 🔑 Password Check
+userSchema.methods.isPasswordCorrect = async function (password) {
+  if (!this.password) return false;
   return bcrypt.compare(password, this.password);
 };
 
+// 🎟️ Access Token
 userSchema.methods.generateAccessToken = function () {
-
   return jwt.sign(
     {
       _id: this._id,
       email: this.email,
       name: this.name,
-      role: this.role
+      activeMembership: this.activeMembership,
+      isPlatformAdmin: this.isPlatformAdmin
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
@@ -130,8 +175,8 @@ userSchema.methods.generateAccessToken = function () {
   );
 };
 
+// 🔄 Refresh Token
 userSchema.methods.generateRefreshToken = function () {
-
   return jwt.sign(
     {
       _id: this._id

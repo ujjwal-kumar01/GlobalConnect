@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import userRoutes from "./routes/user.route.js"
+import collegeRouter from './routes/college.route.js'
 
 const app = express();
 
@@ -22,5 +23,6 @@ app.get("/", (req, res) => {
 });
 
 app.use('/api/user',userRoutes);
+app.use('/api/colleges',collegeRouter);
 
 export default app;

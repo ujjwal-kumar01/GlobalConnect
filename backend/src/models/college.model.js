@@ -7,13 +7,22 @@ const collegeSchema = new mongoose.Schema({
     required: true
   },
 
-  domain: String,
+  allowedDomains: [
+    {
+      type: String // e.g. "stanford.edu"
+    }
+  ],
 
   location: String,
 
   description: String,
 
   logo: String,
+
+  super_admin: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  },
 
   admins: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -30,8 +39,8 @@ const collegeSchema = new mongoose.Schema({
     ref: "College"
   }],
 
-},{
-    timestamps:true
+}, {
+  timestamps: true
 }
 );
 

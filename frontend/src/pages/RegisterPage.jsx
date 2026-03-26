@@ -4,14 +4,14 @@ import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
 import { useNavigate, Link } from 'react-router-dom';
-import table from '../assets/table.jpg'; 
-// import { useUser } from '../context/AuthContext'; // Import this if you want to auto-login after register
+import table from '../assets/table.jpg';
+import { useUser } from '../context/UserContext'; // Import this if you want to auto-login after register
 
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState('');
   const navigate = useNavigate();
-  // const { login } = useUser(); // Grab login if auto-logging in
+  const { login } = useUser(); // Grab login if auto-logging in
 
   const {
     register,
@@ -19,53 +19,77 @@ const RegisterPage = () => {
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm({
-    defaultValues: {
-      role: 'student' // Set the default role exactly as your backend expects
-    }
-  });
+  } = useForm();
 
-  // Watch the role field so we can apply active styles to the selected icon
-  const selectedRole = watch('role');
 
   const onSubmit = async (data) => {
     setServerError('');
     try {
-      const response = await axios.post('http://localhost:8000/api/user/registerUser', {
-        fullName: data.fullName,
+      const response = await axios.post('/api/user/registerUser', {
+        name: data.name,
         email: data.email,
         password: data.password,
-        role: data.role, // Now sending the role to the backend!
       });
-      
+
       console.log('Registration successful:', response.data);
-      
+
       // If your backend returns the user data and token on register, you can log them in immediately:
-      // login(response.data.user); 
-      
-      navigate('/onboarding', { replace: true });
+      // ✅ FIX: extract user properly
+      const user = response.data.data.user;
+
+      // ✅ login with correct user
+      login(user);
+
+      // 🔥 Correct flow based on NEW MODEL
+      if (!user.isEmailVerified) {
+        navigate('/verify', { replace: true });
+      } else if (!user.memberships || user.memberships.length === 0) {
+        navigate('/onboarding', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
+      console.log(err)
       setServerError(err.response?.data?.message || 'Failed to connect to the server.');
     }
   };
 
   const handleGoogleSuccess = async (credentialResponse) => {
     console.log('Google Register Credential:', credentialResponse);
+    try {
+      const response = await axios.post('/api/user/google-login', {
+        credentialResponse, // 🔥 THIS is the ID token
+      });
+      login(response.data.user)
+      //TODO: route based on role
+      const user = response.data.user;
+
+      // 🔥 Correct flow based on NEW MODEL
+      if (!user.isEmailVerified) {
+        navigate('/verify', { replace: true });
+      } else if (!user.memberships || user.memberships.length === 0) {
+        navigate('/onboarding', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    } catch (error) {
+      let message = "Something went wrong";
+
+      if (axios.isAxiosError(error)) {
+        message =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Google login failed";
+      }
+    }
   };
 
-  // Define our roles for the UI loop
-  const roleOptions = [
-    { id: 'student', label: 'Student', icon: '🎓' },
-    { id: 'alumni', label: 'Alumni', icon: '🌟' },
-    { id: 'recruiter', label: 'Recruiter', icon: '🤝' },
-    { id: 'admin', label: 'Admin', icon: '🛡️' },
-  ];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 sm:p-6 lg:p-8 font-sans">
-      
+
       <div className="w-full max-w-6xl bg-white rounded-[2rem] shadow-2xl flex flex-col md:flex-row overflow-hidden border border-slate-200/60 relative">
-        
+
         <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500 opacity-5 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
 
         {/* LEFT COLUMN */}
@@ -95,7 +119,7 @@ const RegisterPage = () => {
 
         {/* RIGHT COLUMN */}
         <div className="w-full md:w-1/2 p-8 sm:p-10 lg:p-12 flex flex-col justify-center bg-white relative z-10">
-          
+
           <div className="mb-6">
             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Create Account</h1>
             <p className="text-slate-500 text-sm mt-1">Sign up to start connecting with the world.</p>
@@ -108,29 +132,10 @@ const RegisterPage = () => {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            
+
             {/* ROLE SELECTION UI */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">I am a...</label>
-              <div className="grid grid-cols-4 gap-2">
-                {roleOptions.map((role) => (
-                  <button
-                    key={role.id}
-                    type="button"
-                    onClick={() => setValue('role', role.id)}
-                    className={`flex flex-col items-center justify-center py-2.5 rounded-xl border transition-all ${
-                      selectedRole === role.id
-                        ? 'border-orange-500 bg-orange-50 text-orange-600 shadow-sm'
-                        : 'border-slate-200 bg-white text-slate-500 hover:border-orange-200 hover:bg-orange-50/50'
-                    }`}
-                  >
-                    <span className="text-xl mb-1">{role.icon}</span>
-                    <span className="text-[10px] font-bold tracking-wide">{role.label}</span>
-                  </button>
-                ))}
-              </div>
-              {/* Hidden input to ensure react-hook-form registers the data */}
-              <input type="hidden" {...register('role')} />
+              <div className="block text-xs font-bold text-slate-600 uppercase tracking-wider">I am ...</div>
             </div>
 
             {/* Full Name Field */}
@@ -139,12 +144,12 @@ const RegisterPage = () => {
                 <input
                   type="text"
                   placeholder="Full Name (e.g. Jane Doe)"
-                  {...register("fullName", { required: "Full Name is required" })}
-                  className={`w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border ${errors.fullName ? 'border-red-400 focus:ring-red-500/20' : 'border-transparent focus:ring-orange-500/20'} focus:bg-white focus:outline-none focus:ring-2 focus:border-orange-500 transition-all text-slate-900 placeholder:text-slate-400`}
+                  {...register("name", { required: "Full Name is required" })}
+                  className={`w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border ${errors.name ? 'border-red-400 focus:ring-red-500/20' : 'border-transparent focus:ring-orange-500/20'} focus:bg-white focus:outline-none focus:ring-2 focus:border-orange-500 transition-all text-slate-900 placeholder:text-slate-400`}
                 />
                 <svg className="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               </div>
-              {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName.message}</p>}
+              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
             </div>
 
             {/* Email Field */}
@@ -153,7 +158,7 @@ const RegisterPage = () => {
                 <input
                   type="email"
                   placeholder="Email Address"
-                  {...register("email", { 
+                  {...register("email", {
                     required: "Email is required",
                     pattern: {
                       value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
@@ -173,7 +178,7 @@ const RegisterPage = () => {
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="Password (Min. 6 characters)"
-                  {...register("password", { 
+                  {...register("password", {
                     required: "Password is required",
                     minLength: { value: 6, message: "At least 6 characters" }
                   })}
