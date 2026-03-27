@@ -3,21 +3,60 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
-import { useNavigate, Link } from 'react-router-dom'; // Added for proper routing
-import meetingImage from '../assets/business_meeting_office.jpg';
-import { useUser } from '../context/UserContext';
+import { useNavigate, Link } from 'react-router-dom';
+import meetingImage from '../../assets/business_meeting_office.jpg';
+import { useUser } from '../../context/UserContext';
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState('');
   const navigate = useNavigate();
-  const { login } = useUser()
+  const { login } = useUser();
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm();
+
+  // 🔥 HELPER FUNCTION: The "Traffic Cop" for routing
+  const handleRoleBasedRouting = (user) => {
+    // 1. Check basic account status
+    if (!user.isEmailVerified) return navigate('/verify');
+    if (user.isPlatformAdmin) return navigate('/platform-admin');
+
+    // 2. Check if they have even started onboarding
+    if (!user.memberships || user.memberships.length === 0) {
+      return navigate('/onboarding');
+    }
+
+    // 3. Check verification status of their memberships
+    const hasVerifiedMembership = user.memberships.some(m => m.isVerified);
+    if (!hasVerifiedMembership) {
+      return navigate('/pending-approval');
+    }
+
+    // 4. Ensure they have an active context set
+    if (!user.activeMembership || !user.activeMembership.role) {
+      // If they somehow have a membership but no active role set
+      return navigate('/onboarding');
+    }
+
+    // 5. Final Routing based on their active role
+    const activeRole = user.activeMembership.role;
+
+    switch (activeRole) {
+      case 'admin':
+      case 'super_admin':
+        return navigate('/admin/dashboard');
+      case 'recruiter':
+        return navigate('/recruiter/dashboard');
+      case 'student':
+      case 'alumni':
+      default:
+        return navigate('/student/dashboard');
+    }
+  };
 
   const onSubmit = async (data) => {
     setServerError('');
@@ -29,32 +68,13 @@ const LoginPage = () => {
       });
 
       console.log('Login successful:', response.data);
-      login(response.data.user)
-      const user = response.data.user;
+      const user = response.data.data.user;
 
-      if (!user.isEmailVerified) {
-        return navigate('/verify');
-      }
+      // Update global context
+      login(user);
 
-      if (user.isPlatformAdmin) {
-        return navigate('/platform-admin');
-      }
-
-      if (!user.memberships || user.memberships.length === 0) {
-        return navigate('/onboarding');
-      }
-
-      const hasVerifiedMembership = user.memberships.some(m => m.isVerified);
-
-      if (!hasVerifiedMembership) {
-        return navigate('/pending-approval');
-      }
-
-      if (!user.activeMembership || !user.activeMembership.college) {
-        return navigate('/select-college');
-      }
-
-      navigate('/dashboard');
+      // Route the user
+      handleRoleBasedRouting(user);
 
     } catch (err) {
       setServerError(err.response?.data?.message || 'Failed to connect to the server.');
@@ -65,10 +85,17 @@ const LoginPage = () => {
     console.log('Google Register Credential:', credentialResponse);
     try {
       const response = await axios.post('/api/user/google-login', {
-        credentialResponse, // 🔥 THIS is the ID token
+        credentialResponse,
       });
-      login(response.data.user)
-      router.replace('/dashboard');
+
+      const user = response.data.user;
+
+      // Update global context
+      login(user);
+
+      // Route the user (Fixed previous router.replace bug here!)
+      handleRoleBasedRouting(user);
+
     } catch (error) {
       let message = "Something went wrong";
 
@@ -78,6 +105,7 @@ const LoginPage = () => {
           error.response?.data?.error ||
           "Google login failed";
       }
+      setServerError(message);
     }
   };
 

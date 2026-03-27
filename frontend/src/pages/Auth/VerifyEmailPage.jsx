@@ -3,7 +3,7 @@ import React, { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import meetingImage from '../assets/business_meeting_office.jpg'; 
+import meetingImage from '../../assets/business_meeting_office.jpg'; 
 
 const VerifyEmailPage = () => {
   const [resendStatus, setResendStatus] = useState('');

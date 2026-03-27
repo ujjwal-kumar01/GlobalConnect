@@ -6,7 +6,10 @@ const membershipSchema = new Schema({
   college: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "College",
-    required: true
+    // Make college required for everyone EXCEPT recruiters
+    required: function () {
+      return this.role !== "recruiter";
+    }
   },
 
   role: {

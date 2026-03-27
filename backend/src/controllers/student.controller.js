@@ -98,3 +98,45 @@ export const onboardingAcademic = asyncHandler(async (req, res) => {
     }
   });
 });
+
+export const allAlumni = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
+  // 🔍 Get current user
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const activeCollegeId = user.activeMembership?.college;
+
+  if (!activeCollegeId) {
+    throw new ApiError(400, "No active college selected");
+  }
+
+  // 🎯 Find all alumni in same college, excluding the current user
+  const alumni = await User.find({
+    _id: { $ne: userId }, // 🔥 Excludes the current logged-in user
+    memberships: {
+      $elemMatch: {
+        college: activeCollegeId,
+        role: "alumni",
+        isVerified: true // 🔥 optional but recommended
+      }
+    }
+  })
+    .select("-password -refreshToken -verification") // 🔒 clean response
+    .lean();
+
+  return res.status(200).json({
+    success: true,
+    count: alumni.length,
+    data: alumni
+  });
+});
+

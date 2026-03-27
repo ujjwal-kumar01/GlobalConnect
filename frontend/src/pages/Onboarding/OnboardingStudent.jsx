@@ -54,6 +54,7 @@ const OnboardingStudent = () => {
     try {
       // Retrieve the role we saved during the Register step
       const selectedRole = localStorage.getItem("selectedRole");
+      console.log(selectedRole)
       const role = selectedRole || "student"; // Default to student if missing
 
       // Combine form data with the role

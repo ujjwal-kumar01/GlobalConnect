@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
 import { useNavigate, Link } from 'react-router-dom';
-import table from '../assets/table.jpg';
-import { useUser } from '../context/UserContext'; // Import this if you want to auto-login after register
+import table from '../../assets/table.jpg';
+import { useUser } from '../../context/UserContext'; // Import this if you want to auto-login after register
 
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);

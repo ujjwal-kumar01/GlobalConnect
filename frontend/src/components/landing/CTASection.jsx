@@ -1,8 +1,11 @@
 // src/components/landing/CTASection.jsx
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // 1. Import the hook
 import Button from '../common/Button';
 
 const CTASection = () => {
+    const navigate = useNavigate(); // 2. Initialize the hook
+
     return (
         <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
             <div className="max-w-6xl mx-auto bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-2xl relative flex flex-col md:flex-row items-center justify-between p-12 md:p-16 gap-10">
@@ -23,7 +26,11 @@ const CTASection = () => {
 
                 {/* Action Buttons */}
                 <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto shrink-0">
-                    <Button variant="coral" className="w-full rounded-2xl bg-orange-500 text-white hover:bg-orange-600 shadow-sm sm:w-auto px-8 py-4 text-base shadow-lg shadow-orange-500/20">
+                    <Button 
+                        variant="coral" 
+                        onClick={() => navigate('/register')} // 3. Now this will work!
+                        className="w-full rounded-2xl bg-orange-600 text-white hover:bg-orange-700 shadow-sm sm:w-auto px-8 py-4 text-base shadow-lg shadow-orange-500/20"
+                    >
                         Join Global Connect
                     </Button>
                 </div>

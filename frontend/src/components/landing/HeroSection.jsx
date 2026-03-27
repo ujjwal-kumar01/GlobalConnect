@@ -1,9 +1,12 @@
 // src/components/landing/HeroSection.jsx
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // 1. Import useNavigate
 import Button from '../common/Button';
 import meetingImage from '../../assets/business_meeting_office.jpg';
 
 const HeroSection = () => {
+  const navigate = useNavigate(); // 2. Initialize the hook
+
   return (
     <section className="relative bg-slate-50 py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
@@ -20,8 +23,11 @@ const HeroSection = () => {
             Connect with verified alumni, land direct referrals, and chat with top recruiters. Your college network is your most valuable asset—start using it today.
           </p>
           <div className="flex items-center gap-4 pt-2">
-            <Button variant="coral">Join Your Campus</Button>
-            <Button variant="outline">
+            {/* 3. Add onClick handlers to route to login */}
+            <Button variant="coral" onClick={() => navigate('/register')}>
+              Join Your Campus
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/login')}>
               Explore Jobs
             </Button>
           </div>

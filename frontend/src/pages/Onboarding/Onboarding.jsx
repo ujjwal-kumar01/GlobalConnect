@@ -32,7 +32,7 @@ const OnboardingRole = () => {
         if (!selectedRole) return;
 
         // Save temporarily (later use context/zustand)
-        localStorage.setItem("onboardingRole", selectedRole);
+        localStorage.setItem("selectedRole", selectedRole);
 
         if (selectedRole === "student" || selectedRole === "alumni") {
             navigate("/onboarding/student");
