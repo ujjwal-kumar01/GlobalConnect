@@ -85,6 +85,9 @@ export const onboardingAcademic = asyncHandler(async (req, res) => {
     await foundCollege.save();
   }
 
+  const loggedInUser = await User.findById(user._id)
+        .select("-password -refreshToken");
+
   return res.status(200).json({
     success: true,
     message: isValidDomain
@@ -95,7 +98,8 @@ export const onboardingAcademic = asyncHandler(async (req, res) => {
       college: foundCollege.name,
       role: role,
       isVerified: isValidDomain || false
-    }
+    },
+    user:loggedInUser
   });
 });
 

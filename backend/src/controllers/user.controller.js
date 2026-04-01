@@ -1,62 +1,80 @@
 import { User } from "../models/user.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import {College} from '../models/college.model.js'
 
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asynchandlers.js";
 import { sendVerificationEmail } from "../utils/sendVerificationEmail.js";
+import {uploadOnCloudinary} from '../utils/cloudinary.js'
 
 /* =========================
    UPDATE PROFILE
 ========================= */
 
 export const updateProfile = asyncHandler(async (req, res) => {
-
     const userId = req.user?._id;
 
-    const {
-        name,
-        bio,
-        avatar,
-        company,
-        position,
-        skills,
-        github,
-        linkedin,
-        location,
-        branch,
-        graduationYear
-    } = req.body;
+    // 1. 🛡️ Text Field Whitelist (Removed 'avatar' from here, handled below)
+    const allowedUpdates = [
+        "name", "bio", "company", "position",
+        "github", "linkedin", "location", "branch", "graduationYear"
+    ];
 
     const updateData = {};
 
-    // 🔹 Basic Info
-    if (name) updateData.name = name;
-    if (bio) updateData.bio = bio;
-    if (avatar) updateData.avatar = avatar;
-
-    // 🔹 Professional
-    if (company) updateData.company = company;
-    if (position) updateData.position = position;
-
-    // 🔹 Social
-    if (github) updateData.github = github;
-    if (linkedin) updateData.linkedin = linkedin;
-
-    // 🔹 Academic
-    if (location) updateData.location = location;
-    if (branch) updateData.branch = branch;
-    if (graduationYear) updateData.graduationYear = graduationYear;
-
-    // 🔹 Skills validation
-    if (skills) {
-        if (!Array.isArray(skills)) {
-            throw new ApiError(400, "Skills must be an array");
+    // 2. ⚡ Dynamic Mapping for standard text fields
+    allowedUpdates.forEach((field) => {
+        if (req.body[field] !== undefined) {
+            updateData[field] = req.body[field];
         }
-        updateData.skills = skills;
+    });
+
+    // 3. 🖼️ Handle Avatar Image Upload via Multer & Cloudinary
+    if (req.file) {
+        // req.file is populated by the Multer middleware
+        const avatarLocalPath = req.file.path;
+        
+        // Upload to Cloudinary
+        const avatarCloudinary = await uploadOnCloudinary(avatarLocalPath);
+
+        if (!avatarCloudinary || !avatarCloudinary.secure_url) {
+            throw new ApiError(500, "Error uploading avatar to Cloudinary");
+        }
+
+        // Save the secure URL to the database payload
+        updateData.avatar = avatarCloudinary.secure_url;
+    } else if (req.body.avatar === "") {
+        // Allows the user to completely remove their profile picture if desired
+        updateData.avatar = "";
     }
 
+    // 4. 🎯 Handle Skills Array (Sent as Stringified JSON from FormData)
+    if (req.body.skills !== undefined) {
+        let parsedSkills = req.body.skills;
+        
+        // If it comes through as a string (which it will via FormData), parse it back into an array
+        if (typeof parsedSkills === "string") {
+            try {
+                parsedSkills = JSON.parse(parsedSkills);
+            } catch (error) {
+                throw new ApiError(400, "Invalid skills format. Must be a valid JSON array.");
+            }
+        }
+
+        if (!Array.isArray(parsedSkills)) {
+            throw new ApiError(400, "Skills must be an array");
+        }
+        updateData.skills = parsedSkills;
+    }
+
+    // 5. 🛑 Performance Check
+    if (Object.keys(updateData).length === 0) {
+        throw new ApiError(400, "No valid fields provided for update");
+    }
+
+    // 6. 🚀 Execute the Database Update
     const updatedUser = await User.findByIdAndUpdate(
         userId,
         { $set: updateData },
@@ -71,7 +89,6 @@ export const updateProfile = asyncHandler(async (req, res) => {
         new ApiResponse(200, updatedUser, "Profile updated successfully")
     );
 });
-
 /* =========================
    RESEND CODE
 ========================= */
@@ -293,104 +310,6 @@ export const loginUser = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, { user: loggedInUser }, "Login successful"));
 });
 
-/* =========================
-   ONBOARDING (CORE)
-========================= */
-
-export const onboardingUser = asyncHandler(async (req, res) => {
-
-    const userId = req.user._id;
-
-    const {
-        role,
-        college,
-        company,
-        position,
-        graduationYear,
-        branch,
-        location,
-        skills
-    } = req.body;
-
-    if (!role) throw new ApiError(400, "Role is required");
-
-    const user = await User.findById(userId);
-    if (!user) throw new ApiError(404, "User not found");
-
-    // 🚨 Restrictions
-    if (["student", "admin", "super_admin"].includes(role)) {
-        if (user.memberships.length > 0) {
-            throw new ApiError(400, "Only one college allowed");
-        }
-    }
-
-    // 🚨 Validations
-    if (["student", "alumni"].includes(role)) {
-        if (!college || !graduationYear) {
-            throw new ApiError(400, "College & graduation year required");
-        }
-    }
-
-    if (role === "recruiter" && !company) {
-        throw new ApiError(400, "Company required");
-    }
-
-    if (["admin", "super_admin"].includes(role) && !college) {
-        throw new ApiError(400, "College required");
-    }
-
-    // 🔥 Membership
-    const membership = {
-        college: college || null,
-        role,
-        permissions: role === "admin" ? [] : [],
-        isVerified: role === "student" || role === "alumni" ? false : true
-    };
-
-    user.memberships.push(membership);
-
-    // 🔥 Active Membership
-    user.activeMembership = {
-        college,
-        role
-    };
-
-    if (!user.primaryCollege && college) {
-        user.primaryCollege = college;
-    }
-
-    // 🔥 Role Data
-    if (role === "student") {
-        user.graduationYear = graduationYear;
-        if (branch) user.branch = branch;
-    }
-
-    if (role === "alumni") {
-        user.graduationYear = graduationYear;
-        if (company) user.company = company;
-        if (position) user.position = position;
-    }
-
-    if (role === "recruiter") {
-        user.company = company;
-        if (position) user.position = position;
-    }
-
-    if (location) user.location = location;
-
-    if (skills) {
-        if (!Array.isArray(skills)) {
-            throw new ApiError(400, "Skills must be array");
-        }
-        user.skills = skills;
-    }
-
-    await user.save();
-
-    return res.status(200).json(
-        new ApiResponse(200, user, "Onboarding completed")
-    );
-});
 
 /* =========================
    SWITCH MEMBERSHIP
@@ -479,5 +398,172 @@ export const getProfile = asyncHandler(async (req, res) => {
 
     return res.status(200).json(
         new ApiResponse(200, user, "Profile fetched")
+    );
+});
+
+export const getCurrentUser = asyncHandler(async (req, res) => {
+  // 1. Ensure the user ID exists (Injected by your verifyJWT middleware)
+  const userId = req.user?._id;
+
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized access. Invalid or missing token.");
+  }
+
+  // 2. Fetch the user from the database
+  // We explicitly remove the password and refreshToken from the result
+  const currentUser = await User.findById(userId)
+    .select("-password -refreshToken")
+    // 🔥 OPTIONAL BUT HIGHLY RECOMMENDED: 
+    // Populate the college references so your frontend gets the actual college names 
+    // instead of just the raw ObjectIds!
+    .populate({
+      path: "memberships.college",
+      select: "name location alumniCount" // Only pull the fields you actually need
+    })
+    .populate({
+      path: "activeMembership.college",
+      select: "name location"
+    });
+
+  // 3. Handle edge case where token is valid but user was deleted from DB
+  if (!currentUser) {
+    throw new ApiError(404, "User profile no longer exists.");
+  }
+
+  // 4. Send the fresh data back to the frontend
+  return res.status(200).json(
+    new ApiResponse(200, currentUser, "Current user fetched successfully.")
+  );
+});
+
+export const requestCollegeAccess = asyncHandler(async (req, res) => {
+  const { collegeId, role } = req.body;
+  const userId = req.user?._id;
+    
+  // 1. Basic Validations
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized request. Please log in.");
+  }
+  
+  if (!collegeId || !role) {
+    throw new ApiError(400, "College ID and intended role are required.");
+  }
+
+  // Ensure the requested role matches your Schema Enum
+  const validRoles = ["student", "alumni", "recruiter", "admin"];
+  if (!validRoles.includes(role)) {
+    throw new ApiError(400, "Invalid role requested.");
+  }
+
+  // 2. Verify the target college actually exists in the database
+  const targetCollege = await College.findById(collegeId);
+  if (!targetCollege) {
+    throw new ApiError(404, "The requested college could not be found.");
+  }
+
+  // 3. Fetch the user
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found.");
+  }
+
+  // 4. 🛡️ Check for Duplicate Requests
+  // Prevent the user from spamming the request button for the same college
+  const existingMembership = user.memberships.find(
+    (m) => m.college.toString() === collegeId.toString()
+  );
+
+  if (existingMembership) {
+    if (existingMembership.isVerified) {
+      throw new ApiError(400, `You are already a verified member of ${targetCollege.name}.`);
+    } else {
+      throw new ApiError(400, `Your access request for ${targetCollege.name} is already pending approval.`);
+    }
+  }
+
+  // 5. Create the new pending membership object
+  const newMembership = {
+    college: collegeId,
+    role: role,
+    permissions: [], // Permissions are assigned by admins later (if applicable)
+    isVerified: false // ⏳ Automatically marks it as 'Pending' for the Admin dashboard!
+  };
+
+  // Push the new request to their memberships array
+  user.memberships.push(newMembership);
+
+  // 6. UX Fallback: If this is their very first college request, set it as their active dashboard view
+  if (!user.activeMembership || !user.activeMembership.college) {
+    user.activeMembership = {
+      college: collegeId,
+      role: role
+    };
+  }
+
+  // Save the updated user document
+  await user.save();
+
+  // 7. Send the response
+  // Note: We don't need to send the full user object back because your frontend 
+  // now perfectly calls `refreshUser()` immediately after this succeeds!
+  return res.status(200).json(
+    new ApiResponse(200, null, `Access request sent to ${targetCollege.name} successfully.`)
+  );
+});
+
+export const removeMyMembership = asyncHandler(async (req, res) => {
+  const { collegeId } = req.params;
+  const userId = req.user._id;
+
+  // Use $pull to safely remove ONLY this specific college from their array
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    {
+      $pull: {
+        memberships: { college: collegeId }
+      }
+    },
+    { new: true }
+  );
+
+  // Fallback safety: If they just deleted the college they were currently viewing, reset active context
+  if (updatedUser.activeMembership?.college?.toString() === collegeId.toString()) {
+    if (updatedUser.memberships.length > 0) {
+      updatedUser.activeMembership = {
+        college: updatedUser.memberships[0].college,
+        role: updatedUser.memberships[0].role
+      };
+    } else {
+      updatedUser.activeMembership = null; 
+    }
+    await updatedUser.save();
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, null, "Successfully removed college from your networks.")
+  );
+});
+
+export const getUserProfileById = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+
+    if (!userId) {
+        throw new ApiError(400, "User ID is required.");
+    }
+
+    // Find the user and exclude sensitive fields
+    const targetUser = await User.findById(userId)
+        .select("-password -refreshToken -verificationCode")
+        // NOTE: If your activeMembership/college is a reference that needs populating, 
+        // add the .populate() method here, for example:
+        .populate("activeMembership.college", "name location")
+        ;
+
+    if (!targetUser) {
+        throw new ApiError(404, "User profile not found.");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, targetUser, "User profile fetched successfully.")
     );
 });

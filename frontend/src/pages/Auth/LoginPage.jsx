@@ -30,19 +30,16 @@ const LoginPage = () => {
       return navigate('/onboarding');
     }
 
-    // 3. Check verification status of their memberships
-    const hasVerifiedMembership = user.memberships.some(m => m.isVerified);
-    if (!hasVerifiedMembership) {
-      return navigate('/pending-approval');
-    }
+    // 🔥 REMOVED the `hasVerifiedMembership` check here!
+    // Now, unverified users will pass straight through to Step 3.
 
-    // 4. Ensure they have an active context set
+    // 3. Ensure they have an active context set
     if (!user.activeMembership || !user.activeMembership.role) {
       // If they somehow have a membership but no active role set
       return navigate('/onboarding');
     }
 
-    // 5. Final Routing based on their active role
+    // 4. Final Routing based on their active role
     const activeRole = user.activeMembership.role;
 
     switch (activeRole) {
@@ -93,7 +90,7 @@ const LoginPage = () => {
       // Update global context
       login(user);
 
-      // Route the user (Fixed previous router.replace bug here!)
+      // Route the user 
       handleRoleBasedRouting(user);
 
     } catch (error) {
@@ -118,7 +115,7 @@ const LoginPage = () => {
         {/* Subtle decorative glow to match register page */}
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-sky-500 opacity-5 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
 
-        {/* LEFT COLUMN: Branding & Image (Stacks on top for mobile now) */}
+        {/* LEFT COLUMN: Branding & Image */}
         <div className="flex w-full md:w-1/2 bg-slate-50 p-8 sm:p-10 lg:p-16 flex-col justify-center md:justify-between border-b md:border-b-0 md:border-r border-slate-200">
 
           <div className="flex items-center gap-3 mb-6 md:mb-12">
@@ -140,7 +137,6 @@ const LoginPage = () => {
           </div>
 
           <div className="rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-white relative z-10">
-            {/* Image scales from h-40 on mobile to h-80 on large screens */}
             <img src={meetingImage} alt="Office Workspace" className="w-full h-40 sm:h-48 md:h-64 lg:h-80 object-cover" />
           </div>
         </div>

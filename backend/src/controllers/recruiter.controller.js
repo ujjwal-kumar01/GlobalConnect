@@ -23,7 +23,7 @@ export const onboardingRecruiter = asyncHandler(async (req, res) => {
 
   // 3. Look up the requested College by name to get its ObjectId
   const targetCollege = await College.findOne({ name: college });
-  
+
   if (!targetCollege) {
     throw new ApiError(404, "Selected institution not found in our records.");
   }
@@ -38,7 +38,7 @@ export const onboardingRecruiter = asyncHandler(async (req, res) => {
   // 5. Update the User's core professional fields
   user.company = company.trim();
   user.position = position.trim();
-  
+
   if (location) {
     user.location = location.trim();
   }
@@ -58,7 +58,7 @@ export const onboardingRecruiter = asyncHandler(async (req, res) => {
       permissions: ["post_jobs"],
       isVerified: false // Needs admin approval to actually post jobs/view talent
     });
-    
+
     // Update active context
     user.activeMembership = {
       college: targetCollege._id,
@@ -68,6 +68,9 @@ export const onboardingRecruiter = asyncHandler(async (req, res) => {
 
   // 7. Save the updated user document
   await user.save();
+
+  const loggedInUser = await User.findById(user._id)
+    .select("-password -refreshToken");
 
   // 8. Send the success response
   return res.status(200).json({
@@ -79,6 +82,8 @@ export const onboardingRecruiter = asyncHandler(async (req, res) => {
       position: user.position,
       role: "recruiter",
       isVerified: false
-    }
+    },
+    user:loggedInUser
   });
 });
+

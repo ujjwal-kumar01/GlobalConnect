@@ -7,7 +7,7 @@ export default async function dbconnect() {
         console.log("Database connected successfully:", connectionInstance.connection.host);
     }
     catch(err) {
-        console.log(err);
+        // console.log(err);
         process.exit(1);
     }
 }

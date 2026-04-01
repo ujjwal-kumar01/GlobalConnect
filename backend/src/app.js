@@ -1,9 +1,12 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { ApiError } from "./utils/ApiError.js"; 
 import userRoutes from "./routes/user.route.js"
 import collegeRouter from './routes/college.route.js'
 import studentRouter from './routes/student.route.js'
+import jobRouter from './routes/jobs.route.js'
+import adminRouter from './routes/admin.route.js'
 
 const app = express();
 
@@ -26,6 +29,26 @@ app.get("/", (req, res) => {
 app.use('/api/user',userRoutes);
 app.use('/api/colleges',collegeRouter);
 app.use('/api/student',studentRouter);
+app.use('/api/jobs',jobRouter);
+app.use('/api/admin',adminRouter);
+
+
+
+app.use((err, req, res, next) => {
+  if (err instanceof ApiError) {
+    return res.status(err.statusCode).json({
+      success: err.success,
+      message: err.message,
+      errors: err.errors
+    });
+  }
+
+  return res.status(500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+    errors: []
+  });
+});
 
 
 export default app;
