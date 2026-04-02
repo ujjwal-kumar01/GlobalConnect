@@ -33,6 +33,7 @@ import Alumni from './pages/Student/Alumni.jsx'
 import Jobs from './pages/Student/Jobs.jsx'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { UserProvider } from './context/UserContext.jsx'
+import { SocketProvider } from './context/SocketContext.jsx'
 import JoinCollege from './pages/Recruiter/JoinCollege.jsx'
 import PostJob from './pages/Recruiter/PostJob.jsx'
 import RecruiterManagement from './pages/CollegeAdmin/RecruiterManagement.jsx'
@@ -40,6 +41,7 @@ import AdminManagement from './pages/CollegeAdmin/AdminManagement.jsx'
 import MemberManagement from './pages/CollegeAdmin/StudentManagement.jsx'
 import JobApplicants from './pages/Recruiter/JobApplicants.jsx'
 import StudentApplications from './pages/Student/AppliedApplications.jsx'
+import Messages from './pages/Messages.jsx'
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -61,7 +63,7 @@ const router = createBrowserRouter(
 
       {/* 🔴 PROTECTED UNIFIED LAYOUT ROUTING --- */}
 
-      {/* 🟣 Shared Portal - Locked to ALL authenticated users */}
+      {/* 🟣 Shared Portal - Auth Guard */}
       <Route element={<ProtectedRoute allowedRoles={['student', 'alumni', 'recruiter', 'admin', 'super_admin']} />}>
         
         {/* The logged-in user's own settings/profile */}
@@ -69,9 +71,16 @@ const router = createBrowserRouter(
           <Route path="profile" element={<UserProfile />} />
         </Route>
 
-        {/* 🔥 NEW: Dynamic route to view ANY user's profile based on their ID */}
+        {/* Dynamic route to view ANY user's profile based on their ID */}
         <Route path="profile" element={<ContentLayout />} >
           <Route path=":userId" element={<UserProfile />} />
+        </Route>
+
+        {/* 🔥 UPDATED: Messages restricted to only Students and Alumni */}
+        <Route element={<ProtectedRoute allowedRoles={['student', 'alumni']} />}>
+          <Route path="messages" element={<ContentLayout />}>
+            <Route index element={<Messages />} />
+          </Route>
         </Route>
         
       </Route>
@@ -79,27 +88,24 @@ const router = createBrowserRouter(
       {/* 🔵 Student/Alumni Portal - Base */}
       <Route element={<ProtectedRoute allowedRoles={['student', 'alumni']} />}>
         <Route path="student" element={<ContentLayout />} >
-          
-          {/* Shared by both Students and Alumni */}
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="alumni" element={<Alumni />} />
           
-          {/* 🔥 STUDENTS ONLY: View and Apply to Jobs */}
+          {/* STUDENTS ONLY */}
           <Route element={<ProtectedRoute allowedRoles={['student']} />}>
             <Route path="jobs" element={<Jobs />} />
             <Route path="MyApplications" element={<StudentApplications />} />
           </Route>
 
-          {/* 🔥 ALUMNI ONLY: Post Jobs and View Applicants */}
+          {/* ALUMNI ONLY */}
           <Route element={<ProtectedRoute allowedRoles={['alumni']} />}>
             <Route path="post-jobs" element={<PostJob />} />
             <Route path="JobApplicants" element={<JobApplicants />} />
           </Route>
-
         </Route>
       </Route>
 
-      {/* 🏢 Recruiter Portal - Locked to recruiters */}
+      {/* 🏢 Recruiter Portal */}
       <Route element={<ProtectedRoute allowedRoles={['recruiter']} />}>
         <Route path="recruiter" element={<ContentLayout />} >
           <Route path="dashboard" element={<Dashboard />} /> 
@@ -109,7 +115,7 @@ const router = createBrowserRouter(
         </Route>
       </Route>
 
-      {/* 🛡️ Admin Portal - Locked to admins & super_admins */}
+      {/* 🛡️ Admin Portal */}
       <Route element={<ProtectedRoute allowedRoles={['admin', 'super_admin']} />}>
         <Route path="admin" element={<ContentLayout />} >
           <Route path="dashboard" element={<Dashboard />} />
@@ -131,7 +137,9 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}>
       <UserProvider>
+        <SocketProvider>
         <RouterProvider router={router} />
+        </SocketProvider>
       </UserProvider>
     </GoogleOAuthProvider>
   </StrictMode>,

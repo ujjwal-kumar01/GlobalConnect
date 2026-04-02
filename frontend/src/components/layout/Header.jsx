@@ -1,11 +1,12 @@
-// src/components/layout/Header.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from '../../context/UserContext';
+import { useSocket } from '../../context/SocketContext'; 
 
 const Header = () => {
   const { user, logout } = useUser(); 
+  const { notifications } = useSocket(); 
   const navigate = useNavigate();
   
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -23,17 +24,18 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Determines the correct base path based on the user's active role
+  // Role Logic
+  const role = user?.activeMembership?.role;
+  const isStudentOrAlumni = role === 'student' || role === 'alumni';
+
   const getBasePath = () => {
-    const role = user?.activeMembership?.role;
     if (role === 'admin' || role === 'super_admin') return '/admin';
     if (role === 'recruiter') return '/recruiter';
-    return '/student'; // Default for student/alumni
+    return '/student'; 
   };
 
   const basePath = getBasePath();
 
-  // Formatters
   const formatRole = (role) => {
     if (!role) return "Community Member";
     return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -41,23 +43,19 @@ const Header = () => {
 
   const displayName = user?.fullName || user?.name || "Guest User";
   const hasUnreadNotifications = user?.unreadNotifications && user.unreadNotifications.length > 0;
+  
+  const unreadMessageCount = notifications?.length || 0;
 
-  // 🔥 UPDATED: Secure, full-stack logout handler
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      // 1. Tell the backend to destroy the session/cookie
-      // Adjust the URL if your backend logout route is different
       await axios.post('/api/user/logout', {}, { withCredentials: true });
     } catch (error) {
       console.error("Server-side logout failed:", error);
     } finally {
-      // 2. Always clear the local Context and localStorage, even if the server call fails
       if (logout) logout();
       localStorage.removeItem("selectedRole");
       localStorage.removeItem("onboardingDetails");
-      
-      // 3. Redirect to login
       navigate('/login', { replace: true });
     }
   };
@@ -81,18 +79,25 @@ const Header = () => {
       {/* Right: Quick Actions & Profile */}
       <div className="flex items-center gap-4 sm:gap-6 ml-4 shrink-0">
         
-        {/* Messages Link */}
-        <Link 
-          to={`${basePath}/messages`} 
-          className="text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-all relative p-2 rounded-xl"
-          title="Messages"
-        >
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
-          </svg>
-        </Link>
+        {/* 🔥 UPDATED: Messages Link - Only visible to Students and Alumni */}
+        {isStudentOrAlumni && (
+          <Link 
+            to="/messages" 
+            className="text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-all relative p-2 rounded-xl"
+            title="Messages"
+          >
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+            </svg>
+            {unreadMessageCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
+              </span>
+            )}
+          </Link>
+        )}
         
-        {/* Notifications Link with CONDITIONAL active dot */}
+        {/* Notifications Link */}
         <Link 
           to={`${basePath}/notifications`}
           className="text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-all relative p-2 rounded-xl"
@@ -106,19 +111,17 @@ const Header = () => {
           )}
         </Link>
         
-        {/* Divider */}
         <div className="h-8 w-px bg-slate-200 mx-1 hidden sm:block"></div>
 
-        {/* User Profile Dropdown Container */}
+        {/* User Profile Dropdown */}
         <div className="relative" ref={dropdownRef}>
-          {/* Toggle Button */}
           <button 
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className={`flex items-center gap-3 p-1.5 rounded-xl transition-all ${isProfileOpen ? 'bg-slate-50 ring-2 ring-orange-500/20' : 'hover:bg-slate-50'}`}
           >
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-slate-900 leading-tight">{displayName}</p>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">{formatRole(user?.activeMembership?.role)}</p>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">{formatRole(role)}</p>
             </div>
             
             <img 
@@ -132,12 +135,11 @@ const Header = () => {
             </svg>
           </button>
 
-          {/* Actual Dropdown Menu */}
           {isProfileOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl py-2 z-50">
               <div className="px-4 py-3 border-b border-slate-50 sm:hidden">
                 <p className="text-sm font-bold text-slate-900">{displayName}</p>
-                <p className="text-xs text-slate-500">{formatRole(user?.activeMembership?.role)}</p>
+                <p className="text-xs text-slate-500">{formatRole(role)}</p>
               </div>
               
               <Link 

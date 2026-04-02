@@ -1,16 +1,15 @@
 // src/pages/AlumniDirectory.jsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // 🔥 IMPORT useNavigate
 import { useUser } from '../../context/UserContext'; 
 
 // --- CUSTOM DROPDOWN COMPONENT ---
-// Replaces the ugly native <select> so we can style the open menu and hover states
+// (Keep your CustomDropdown exactly the same)
 const CustomDropdown = ({ value, onChange, options, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Close the dropdown if the user clicks anywhere outside of it
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -36,10 +35,8 @@ const CustomDropdown = ({ value, onChange, options, placeholder }) => {
         <svg className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-orange-500' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
       </button>
 
-      {/* The Styled Dropdown List */}
       {isOpen && (
         <div className="absolute z-20 w-full mt-2 bg-white border border-slate-100 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1 custom-scrollbar">
-          {/* Default 'All' Option */}
           <button
             type="button"
             onClick={() => { onChange(''); setIsOpen(false); }}
@@ -50,7 +47,6 @@ const CustomDropdown = ({ value, onChange, options, placeholder }) => {
             All {placeholder.split(' ')[0]}s
           </button>
           
-          {/* Dynamically Generated Options */}
           {options.map((option, idx) => (
             <button
               key={idx}
@@ -72,6 +68,7 @@ const CustomDropdown = ({ value, onChange, options, placeholder }) => {
 
 const AlumniDirectory = () => {
   const { user } = useUser(); 
+  const navigate = useNavigate(); // 🔥 INITIALIZE useNavigate
   
   const [alumni, setAlumni] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,30 +99,8 @@ const AlumniDirectory = () => {
       } catch (err) {
         console.error("Failed to fetch alumni:", err);
         setError("Unable to load the alumni directory at this time.");
-        
-        // Fallback data
-        setAlumni([
-          {
-            _id: '1', name: 'Sarah Chen', position: 'Software Engineer', company: 'Google',
-            graduationYear: 2021, branch: 'Computer Science', location: 'San Francisco, CA',
-            skills: ['AI/ML', 'Product', 'Open Source'], avatar: 'https://i.pravatar.cc/150?u=sarah'
-          },
-          {
-            _id: '2', name: 'Marcus Riley', position: 'Investment Banker', company: 'J.P. Morgan',
-            graduationYear: 2019, branch: 'Economics', location: 'New York, NY',
-            skills: ['Finance', 'M&A', 'Consulting'], avatar: 'https://i.pravatar.cc/150?u=marcus'
-          },
-          {
-            _id: '3', name: 'Elena Rodriguez', position: 'Lead UX Designer', company: 'Airbnb',
-            graduationYear: 2020, branch: 'Fine Arts', location: 'Barcelona, Spain',
-            skills: ['Design Systems', 'UI/UX', 'User Research'], avatar: 'https://i.pravatar.cc/150?u=elena'
-          },
-          {
-            _id: '4', name: 'David Wu', position: 'Founder', company: 'NextScale',
-            graduationYear: 2017, branch: 'Engineering', location: 'Austin, TX',
-            skills: ['Startups', 'Leadership', 'SaaS'], avatar: 'https://i.pravatar.cc/150?u=david'
-          }
-        ]);
+        // Fallback data removed for brevity in snippet, keep yours!
+        setAlumni([]);
       } finally {
         setIsLoading(false);
       }
@@ -201,27 +176,9 @@ const AlumniDirectory = () => {
 
         {/* CUSTOM DROPDOWN FILTERS */}
         <div className="p-4 flex flex-col sm:flex-row gap-3">
-          
-          <CustomDropdown 
-            value={filterYear}
-            onChange={setFilterYear}
-            options={uniqueYears}
-            placeholder="Graduation Year"
-          />
-          
-          <CustomDropdown 
-            value={filterBranch}
-            onChange={setFilterBranch}
-            options={uniqueBranches}
-            placeholder="Industry"
-          />
-          
-          <CustomDropdown 
-            value={filterLocation}
-            onChange={setFilterLocation}
-            options={uniqueLocations}
-            placeholder="Location"
-          />
+          <CustomDropdown value={filterYear} onChange={setFilterYear} options={uniqueYears} placeholder="Graduation Year" />
+          <CustomDropdown value={filterBranch} onChange={setFilterBranch} options={uniqueBranches} placeholder="Industry" />
+          <CustomDropdown value={filterLocation} onChange={setFilterLocation} options={uniqueLocations} placeholder="Location" />
           
           <button 
             onClick={() => {
@@ -237,7 +194,7 @@ const AlumniDirectory = () => {
         </div>
       </div>
 
-      {/* WARNING IF USER PROFILE IS INCOMPLETE FOR TABS */}
+      {/* WARNING IF USER PROFILE IS INCOMPLETE */}
       {((activeTab === 'My Classmates' && !user?.graduationYear) || (activeTab === 'Near Me' && !user?.location)) && (
         <div className="p-4 mb-8 bg-orange-50 text-orange-700 rounded-xl border border-orange-100 text-center font-medium flex items-center justify-center gap-2">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
@@ -247,9 +204,7 @@ const AlumniDirectory = () => {
 
       {/* ERROR STATE */}
       {error && !isLoading && (
-        <div className="p-4 mb-8 bg-red-50 text-red-600 rounded-xl border border-red-100 text-center font-medium">
-          {error}
-        </div>
+        <div className="p-4 mb-8 bg-red-50 text-red-600 rounded-xl border border-red-100 text-center font-medium">{error}</div>
       )}
 
       {/* ALUMNI GRID */}
@@ -309,14 +264,18 @@ const AlumniDirectory = () => {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    {/* 🔥 CHANGED THIS TO A LINK */}
                     <Link 
                       to={`/profile/${person._id}`}
                       className="flex-1 py-2.5 border-2 border-slate-100 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-50 hover:border-slate-200 transition-colors flex items-center justify-center"
                     >
                       View Profile
                     </Link>
-                    <button className="flex-1 py-2.5 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-sm shadow-orange-500/20">
+                    
+                    {/* 🔥 UPDATED: Use navigate to push state */}
+                    <button 
+                      onClick={() => navigate('/messages', { state: { preselectedUser: person } })}
+                      className="flex-1 py-2.5 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-sm shadow-orange-500/20"
+                    >
                       Message
                     </button>
                   </div>

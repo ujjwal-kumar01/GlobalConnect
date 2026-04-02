@@ -7,8 +7,12 @@ import collegeRouter from './routes/college.route.js'
 import studentRouter from './routes/student.route.js'
 import jobRouter from './routes/jobs.route.js'
 import adminRouter from './routes/admin.route.js'
+import messageRouter from './routes/message.route.js' // 🔥 Add your new message router
 
-const app = express();
+// 🔥 IMPORT 'app' FROM YOUR SOCKET FILE INSTEAD OF CREATING IT HERE
+import { app } from "./socket/socket.js"; 
+
+// Remove this line: const app = express();
 
 app.use(
   cors({
@@ -32,7 +36,8 @@ app.use('/api/student',studentRouter);
 app.use('/api/jobs',jobRouter);
 app.use('/api/admin',adminRouter);
 
-
+// 🔥 Attach the message routes
+app.use('/api/messages', messageRouter); 
 
 app.use((err, req, res, next) => {
   if (err instanceof ApiError) {
@@ -49,6 +54,5 @@ app.use((err, req, res, next) => {
     errors: []
   });
 });
-
 
 export default app;
