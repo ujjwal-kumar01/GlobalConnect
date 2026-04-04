@@ -3,6 +3,8 @@ import { User } from "../models/user.model.js";
 import { College } from "../models/college.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import {Post} from '../models/post.model.js'
+import {uploadOnCloudinary} from '../utils/cloudinary.js'
 
 export const onboardingAdmin = asyncHandler(async (req, res) => {
   // 1. Extract domain from req.body
@@ -173,17 +175,41 @@ export const verifyMember = asyncHandler(async (req, res) => {
     const { userId } = req.params;
     const adminCollegeId = req.user?.activeMembership?.college;
 
-    if (!adminCollegeId) throw new ApiError(400, "Admin college context missing.");
+    if (!adminCollegeId) {
+        throw new ApiError(400, "Admin college context missing.");
+    }
 
-    const user = await User.findOneAndUpdate(
-        { _id: userId, "memberships.college": adminCollegeId },
-        { $set: { "memberships.$.isVerified": true } },
-        { new: true }
+    // 1. Find the user first to check their current active state
+    const user = await User.findById(userId);
+    if (!user) throw new ApiError(404, "User not found");
+
+    // 2. Find the specific membership index for the admin's college
+    const membershipIndex = user.memberships.findIndex(
+        (m) => m.college.toString() === adminCollegeId.toString()
     );
 
-    if (!user) throw new ApiError(404, "User or membership not found");
+    if (membershipIndex === -1) {
+        throw new ApiError(404, "User has no membership request for this college.");
+    }
 
-    return res.status(200).json(new ApiResponse(200, null, "User approved successfully"));
+    // 3. Mark the membership as verified
+    user.memberships[membershipIndex].isVerified = true;
+
+    // 4. 🔥 NEW LOGIC: Set activeMembership if it's currently null or empty
+    // We check if the object exists and if it has a role property
+    if (!user.activeMembership || !user.activeMembership.role) {
+        user.activeMembership = {
+            college: adminCollegeId,
+            role: user.memberships[membershipIndex].role
+        };
+    }
+
+    // 5. Save the user
+    await user.save({ validateBeforeSave: false });
+
+    return res.status(200).json(
+        new ApiResponse(200, null, "User approved and active context initialized.")
+    );
 });
 
 
@@ -192,28 +218,122 @@ export const removeMember = asyncHandler(async (req, res) => {
     const { userId } = req.params;
     const adminCollegeId = req.user?.activeMembership?.college;
 
-    if (!adminCollegeId) throw new ApiError(400, "Admin college context missing.");
+    if (!adminCollegeId) {
+        throw new ApiError(400, "Admin college context missing.");
+    }
 
+    // 1. Remove the membership from the array
     const updatedUser = await User.findByIdAndUpdate(
         userId,
-        { $pull: { memberships: { college: adminCollegeId } } }, 
+        { $pull: { memberships: { college: adminCollegeId } } },
         { new: true }
     );
 
-    if (!updatedUser) throw new ApiError(404, "User not found");
+    if (!updatedUser) {
+        throw new ApiError(404, "User not found");
+    }
 
-    // Fallback Safety: Reset their view if they were looking at this college
-    if (updatedUser.activeMembership?.college?.toString() === adminCollegeId.toString()) {
-        if (updatedUser.memberships.length > 0) {
+    // 2. Check if the removed college was their active context
+    const wasActiveContext = updatedUser.activeMembership?.college?.toString() === adminCollegeId.toString();
+
+    if (wasActiveContext) {
+        // Find the first available VERIFIED membership as a fallback
+        const fallbackMembership = updatedUser.memberships.find(m => m.isVerified === true);
+
+        if (fallbackMembership) {
+            // Switch them to another verified college automatically
+            updatedUser.activeMembership = {
+                college: fallbackMembership.college,
+                role: fallbackMembership.role
+            };
+        } else if (updatedUser.memberships.length > 0) {
+            // If none are verified, but they have pending ones, 
+            // pick the first pending one so they aren't stuck with a deleted ID
             updatedUser.activeMembership = {
                 college: updatedUser.memberships[0].college,
                 role: updatedUser.memberships[0].role
             };
         } else {
-            updatedUser.activeMembership = null; 
+            // 🔥 No memberships left at all: Clear the context entirely
+            updatedUser.activeMembership = null;
         }
-        await updatedUser.save();
+
+        await updatedUser.save({ validateBeforeSave: false });
     }
 
-    return res.status(200).json(new ApiResponse(200, null, "User removed successfully"));
+    return res.status(200).json(
+        new ApiResponse(200, null, "User removed and active context updated.")
+    );
+});
+
+export const getAdminStats = asyncHandler(async (req, res) => {
+    const adminCollegeId = req.user?.activeMembership?.college;
+
+    if (!adminCollegeId) throw new ApiError(400, "College context missing");
+
+    // Since memberships are in the User array, we query the User collection
+    const [members, recruiters, pending, totalPosts] = await Promise.all([
+        User.countDocuments({ memberships: { $elemMatch: { college: adminCollegeId, role: { $in: ['student', 'alumni'] }, isVerified: true } } }),
+        User.countDocuments({ memberships: { $elemMatch: { college: adminCollegeId, role: 'recruiter', isVerified: true } } }),
+        User.countDocuments({ memberships: { $elemMatch: { college: adminCollegeId, isVerified: false } } }),
+        Post.countDocuments({ college: adminCollegeId })
+    ]);
+
+    return res.status(200).json(new ApiResponse(200, {
+        members,
+        recruiters,
+        broadcasts: totalPosts,
+        pending
+    }, "Stats fetched"));
+});
+
+// --- POSTS ---
+export const createCollegePost = asyncHandler(async (req, res) => {
+    const { title, content, type, eventDate } = req.body;
+    const collegeId = req.user.activeMembership.college;
+    let imageUrl = null;
+    if (req.file) {
+      const uploadResult = await uploadOnCloudinary(req.file.path);
+      imageUrl = uploadResult?.secure_url;
+    }
+    console.log("hello")
+
+    const post = await Post.create({
+        title,
+        content,
+        type,
+        eventDate: type === 'event' ? eventDate : null,
+        image: imageUrl,
+        college: collegeId,
+        author: req.user._id,
+        isOfficial: true
+    });
+
+    return res.status(201).json(new ApiResponse(201, post, "Post published successfully"));
+});
+
+// @desc    Delete a college post
+export const deleteCollegePost = asyncHandler(async (req, res) => {
+    const { postId } = req.params;
+    const userId = req.user._id;
+
+    const post = await Post.findById(postId);
+
+    if (!post) {
+        throw new ApiError(404, "Post not found");
+    }
+
+    // Authorization: Only the author OR a Super Admin can delete
+    const isAuthor = post.author.toString() === userId.toString();
+    const isSuperAdmin = req.user.activeMembership.role === "super_admin";
+
+    if (!isAuthor && !isSuperAdmin) {
+        throw new ApiError(403, "You are not authorized to delete this post");
+    }
+
+    await Post.findByIdAndDelete(postId);
+
+    return res.status(200).json(
+        new ApiResponse(200, null, "Post deleted successfully")
+    );
 });

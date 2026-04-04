@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import axios from 'axios';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom'; // 🔥 Added useNavigate
 import { useUser } from '../context/UserContext';
 
 // Reusable Input Component
@@ -19,6 +19,7 @@ const EditInput = React.forwardRef(({ icon, ...props }, ref) => (
 const UserProfile = () => {
   const { user, refreshUser } = useUser();
   const { userId } = useParams(); 
+  const navigate = useNavigate(); // 🔥 Hook for navigation
   
   // Profile Target States
   const [targetUser, setTargetUser] = useState(null);
@@ -190,25 +191,46 @@ const UserProfile = () => {
             {isOwnProfile ? "Your Profile Center" : `${targetUser.name}'s Profile`}
           </h1>
           
-          {isOwnProfile && (
-            <div className="flex items-center gap-2 sm:gap-3">
-              {isEditing ? (
-                <>
-                  <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
-                    Cancel
-                  </button>
-                  <button type="submit" form="profileForm" disabled={isSubmitting} className="px-4 py-2 text-sm font-bold text-white bg-slate-900 rounded-xl hover:bg-orange-600 transition-all disabled:opacity-70 flex items-center gap-2">
-                    {isSubmitting ? 'Saving...' : 'Save'}
-                  </button>
-                </>
-              ) : (
-                <button onClick={() => setIsEditing(true)} className="px-4 py-2 text-sm font-bold text-white bg-slate-900 rounded-xl hover:bg-orange-600 transition-colors flex items-center gap-2">
-                  <svg className="w-4 h-4 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                  Edit Profile
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* 🔥 NEW: Message Button for Other Users */}
+            {!isOwnProfile && (
+                <button 
+                  onClick={() => navigate(`/messages`, { 
+                    state: { 
+                      preselectedUser: {
+                        _id: targetUser._id,
+                        name: targetUser.name,
+                        avatar: targetUser.avatar
+                      } 
+                    } 
+                  })}
+                  className="px-4 py-2 text-sm font-bold text-white bg-orange-500 rounded-xl hover:bg-orange-600 transition-all flex items-center gap-2 shadow-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                  Message
                 </button>
-              )}
-            </div>
-          )}
+            )}
+
+            {isOwnProfile && (
+              <div className="flex items-center gap-2 sm:gap-3">
+                {isEditing ? (
+                  <>
+                    <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+                      Cancel
+                    </button>
+                    <button type="submit" form="profileForm" disabled={isSubmitting} className="px-4 py-2 text-sm font-bold text-white bg-slate-900 rounded-xl hover:bg-orange-600 transition-all disabled:opacity-70 flex items-center gap-2">
+                      {isSubmitting ? 'Saving...' : 'Save'}
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => setIsEditing(true)} className="px-4 py-2 text-sm font-bold text-white bg-slate-900 rounded-xl hover:bg-orange-600 transition-colors flex items-center gap-2">
+                    <svg className="w-4 h-4 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                    Edit Profile
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Notifications */}
@@ -222,7 +244,7 @@ const UserProfile = () => {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
           <div className="h-24 sm:h-28 w-full bg-gradient-to-r from-slate-100 to-slate-200 border-b border-slate-200"></div>
           
-          <div className="px-6 sm:px-8 pb-6">
+          <div className="px-6 sm:px-8 pb-6 text-left">
             <div className="flex flex-col md:flex-row items-start md:items-end gap-5 -mt-12 sm:-mt-14 mb-5">
               
               {/* Avatar Box */}
@@ -265,13 +287,13 @@ const UserProfile = () => {
                 
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 mt-2">
                   {/* College */}
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
                     <svg className="w-4 h-4 text-orange-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72l5 2.73 5-2.73v3.72z"/></svg>
-                    <span className="font-semibold">{targetUser.activeMembership?.college?.name || "Global Connect Network"}</span>
+                    <span>{targetUser.activeMembership?.college?.name || "Global Connect Network"}</span>
                   </div>
                   
-                  {/* 🔥 NEW: Email Display */}
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                  {/* Email Display */}
+                  <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
                     <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                     <span>{targetUser.email}</span>
                   </div>
@@ -285,18 +307,18 @@ const UserProfile = () => {
               </ViewText>
               
               <ViewText icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>}>
-                {targetUser.linkedin ? <a href={targetUser.linkedin} target="_blank" rel="noreferrer" className="text-orange-600 hover:underline">LinkedIn Portal</a> : "LinkedIn Not Linked"}
+                {targetUser.linkedin ? <a href={targetUser.linkedin} target="_blank" rel="noreferrer" className="text-orange-600 hover:underline">LinkedIn Profile</a> : "LinkedIn Not Linked"}
               </ViewText>
 
               <ViewText icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>}>
-                {targetUser.github ? <a href={targetUser.github} target="_blank" rel="noreferrer" className="text-slate-900 hover:underline">GitHub Repositories</a> : "GitHub Not Linked"}
+                {targetUser.github ? <a href={targetUser.github} target="_blank" rel="noreferrer" className="text-slate-900 hover:underline">GitHub Portfolio</a> : "GitHub Not Linked"}
               </ViewText>
             </div>
           </div>
         </div>
 
         {/* --- DETAILED CONTENT --- */}
-        <form id="profileForm" onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <form id="profileForm" onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start text-left">
           
           {/* LEFT: About & Skills */}
           <div className="lg:col-span-2 space-y-6">
@@ -389,7 +411,6 @@ const UserProfile = () => {
               </div>
             )}
             
-            {/* The Restored Editable Links & Profile Basics (Only shown in Edit mode) */}
             {isEditing && (
                 <div className="space-y-4 pt-4 border-t border-slate-100">
                     <h4 className="text-xs font-bold text-slate-900">Social Links & Basics</h4>

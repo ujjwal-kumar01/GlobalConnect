@@ -8,6 +8,7 @@ import studentRouter from './routes/student.route.js'
 import jobRouter from './routes/jobs.route.js'
 import adminRouter from './routes/admin.route.js'
 import messageRouter from './routes/message.route.js' // 🔥 Add your new message router
+import dashboarRouter from './routes/dashboard.route.js'
 
 // 🔥 IMPORT 'app' FROM YOUR SOCKET FILE INSTEAD OF CREATING IT HERE
 import { app } from "./socket/socket.js"; 
@@ -35,6 +36,7 @@ app.use('/api/colleges',collegeRouter);
 app.use('/api/student',studentRouter);
 app.use('/api/jobs',jobRouter);
 app.use('/api/admin',adminRouter);
+app.use('/api/dashboard',dashboarRouter);
 
 // 🔥 Attach the message routes
 app.use('/api/messages', messageRouter); 

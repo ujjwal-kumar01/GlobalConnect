@@ -8,18 +8,18 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"; // 🔥 Import Clou
 
 // @desc    Send a message (Text and/or File)
 export const sendMessage = asyncHandler(async (req, res) => {
-    const { content, message } = req.body; 
+    const { content, message } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
     const finalContent = content || message;
-    
+
     // 🔥 Handle File Upload via Multer
     let attachmentUrl = null;
     if (req.file) {
         const localFilePath = req.file.path;
         const uploadResult = await uploadOnCloudinary(localFilePath);
-        
+
         if (!uploadResult) {
             throw new ApiError(500, "Failed to upload attachment to cloud storage");
         }
@@ -52,7 +52,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
 
     // 3. Update the sidebar preview
     conversation.lastMessage = {
-        text: finalContent ? finalContent : "📎 Attachment", 
+        text: finalContent ? finalContent : "📎 Attachment",
         sender: senderId
     };
     await conversation.save();
@@ -92,8 +92,8 @@ export const getConversations = asyncHandler(async (req, res) => {
     const conversations = await Conversation.find({
         participants: { $in: [userId] }
     })
-    .populate("participants", "name avatar activeMembership") // Get details of the people we are chatting with
-    .sort({ updatedAt: -1 }); // Most recently active chats at the top
+        .populate("participants", "name avatar activeMembership") // Get details of the people we are chatting with
+        .sort({ updatedAt: -1 }); // Most recently active chats at the top
 
     return res.status(200).json(new ApiResponse(200, conversations, "Conversations fetched"));
 });
@@ -105,11 +105,11 @@ export const getConversations = asyncHandler(async (req, res) => {
 // @desc    Get all unread messages for the logged-in user
 export const getUnreadMessages = asyncHandler(async (req, res) => {
     const userId = req.user._id;
-    
+
     // Find messages where YOU are the receiver, and the status is not 'read'
     const unreadMessages = await Message.find({
         receiver: userId,
-        status: { $ne: "read" } 
+        status: { $ne: "read" }
     });
 
     return res.status(200).json(new ApiResponse(200, unreadMessages, "Unread messages fetched"));
@@ -127,4 +127,48 @@ export const markMessagesAsRead = asyncHandler(async (req, res) => {
     );
 
     return res.status(200).json(new ApiResponse(200, null, "Messages marked as read"));
+});
+
+import { GlobalMessage } from "../models/globalMessage.model.js";
+
+
+export const sendCollegeMessage = asyncHandler(async (req, res) => {
+    const { content } = req.body;
+    const senderId = req.user._id;
+    const collegeId = req.user.activeMembership.college;
+
+    let attachmentUrl = null;
+    if (req.file) {
+        const uploadResult = await uploadOnCloudinary(req.file.path);
+        if (!uploadResult) throw new ApiError(500, "Upload failed");
+        attachmentUrl = uploadResult.secure_url;
+    }
+
+    if (!content && !attachmentUrl) {
+        throw new ApiError(400, "Message or attachment is required");
+    }
+
+    const newMessage = await GlobalMessage.create({
+        sender: senderId,
+        college: collegeId,
+        content,
+        attachments: attachmentUrl
+    });
+
+    // 🔥 UPDATED: Added activeMembership to populate
+    const populatedMessage = await newMessage.populate("sender", "name avatar activeMembership");
+
+    return res.status(201).json(new ApiResponse(201, populatedMessage, "Campus message sent"));
+});
+
+export const getCollegeMessages = asyncHandler(async (req, res) => {
+    const collegeId = req.user.activeMembership.college;
+
+    const messages = await GlobalMessage.find({ college: collegeId })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        // 🔥 UPDATED: Added activeMembership to populate
+        .populate("sender", "name avatar activeMembership");
+
+    return res.status(200).json(new ApiResponse(200, messages.reverse(), "History fetched"));
 });

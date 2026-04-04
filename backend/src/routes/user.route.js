@@ -10,7 +10,10 @@ import {
     requestCollegeAccess,
     removeMyMembership,
     updateProfile,
-    getUserProfileById // 🔥 NEW IMPORT
+    getUserProfileById,
+    getCollegePosts,   // 🔥 NEW IMPORT
+    getUserStats,
+    switchActiveMembership
 } from "../controllers/user.controller.js"
 import { onboardingAcademic } from '../controllers/student.controller.js'
 import { onboardingAdmin } from '../controllers/admin.controller.js'
@@ -35,11 +38,14 @@ router.post("/onboarding/recruiter", verifyJWT, onboardingRecruiter)
 
 // Membership Routes
 router.post("/memberships/request", verifyJWT, requestCollegeAccess)
+router.put("/memberships/active", verifyJWT, switchActiveMembership)
 router.delete("/memberships/:collegeId", verifyJWT, removeMyMembership)
 
 // User Profile Routes
 router.get("/me", verifyJWT, getCurrentUser) // Keep this ABOVE /:userId
 router.put('/profile', verifyJWT, upload.single("avatar"), updateProfile)
+router.get("/college-posts", verifyJWT, getCollegePosts);
+router.get("/stats/user-overview", verifyJWT, getUserStats);
 
 // 🔥 NEW ROUTE: Fetch specific user profile
 router.get("/:userId", verifyJWT, getUserProfileById)

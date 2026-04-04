@@ -27,4 +27,10 @@ router.get("/:id", getMessages);
 // Send a message (with Multer catching the "attachment" file)
 router.post("/send/:id", upload.single("attachment"), sendMessage);
 
+import { sendCollegeMessage, getCollegeMessages } from "../controllers/message.controller.js";
+
+// ... other routes
+router.get("/college/history", getCollegeMessages);
+router.post("/college/send", upload.single("attachment"), sendCollegeMessage);
+
 export default router;

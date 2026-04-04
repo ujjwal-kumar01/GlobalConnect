@@ -2,6 +2,9 @@ import { User } from "../models/user.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {College} from '../models/college.model.js'
+import { Post } from "../models/post.model.js";
+import {Application} from '../models/jobApplication.model.js'
+import {Job} from '../models/job.model.js'
 
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -511,6 +514,44 @@ export const requestCollegeAccess = asyncHandler(async (req, res) => {
   );
 });
 
+export const switchActiveMembership = asyncHandler(async (req, res) => {
+    const { collegeId, role } = req.body;
+    console.log("hello")
+    if (!collegeId || !role) {
+        throw new ApiError(400, "College ID and Role are required to switch networks.");
+    }
+
+    // 1. Verify that the user actually belongs to this college and is verified
+    const user = await User.findById(req.user._id);
+
+    const hasMembership = user.memberships.find(m => 
+        m.college.toString() === collegeId && 
+        m.role === role
+    );
+
+    if (!hasMembership) {
+        throw new ApiError(403, "You do not have a membership in this institution.");
+    }
+
+    if (!hasMembership.isVerified) {
+        throw new ApiError(403, "Your membership for this institution is still pending approval.");
+    }
+
+    // 2. Update the activeMembership field
+    user.activeMembership = {
+        college: collegeId,
+        role: role
+    };
+
+    await user.save({ validateBeforeSave: false });
+
+    // 3. Return the updated user (or just success)
+    // The frontend refreshUser(true) call will pick up these changes
+    return res.status(200).json(
+        new ApiResponse(200, user.activeMembership, "Successfully switched active network.")
+    );
+});
+
 export const removeMyMembership = asyncHandler(async (req, res) => {
   const { collegeId } = req.params;
   const userId = req.user._id;
@@ -565,5 +606,105 @@ export const getUserProfileById = asyncHandler(async (req, res) => {
 
     return res.status(200).json(
         new ApiResponse(200, targetUser, "User profile fetched successfully.")
+    );
+});
+
+export const getCollegePosts = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 6;
+    const skip = (page - 1) * limit;
+    const collegeId = req.user.activeMembership.college;
+    const [posts, totalPosts] = await Promise.all([
+        Post.find({ college: collegeId })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate("author", "name avatar"),
+        Post.countDocuments({ college: collegeId })
+    ]);
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            posts,
+            pagination: {
+                totalPosts,
+                totalPages: Math.ceil(totalPosts / limit),
+                currentPage: page,
+                hasNextPage: page * limit < totalPosts,
+                hasPrevPage: page > 1
+            }
+        }, "Fetched successfully")
+    );
+});
+
+
+export const getUserStats = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+    const role = req.user.activeMembership?.role;
+    const collegeId = req.user.activeMembership?.college;
+
+    let collegeCountRaw = 0;
+    let mainCount = 0;
+    let secondaryCount = 0;
+
+    // 1. Logic for RECRUITER
+    if (role === 'recruiter') {
+        // collegeCount: Total verified students available on the platform (or specific college if tied)
+        const query = collegeId 
+            ? { memberships: { $elemMatch: { college: collegeId, role: 'student', isVerified: true } } }
+            : { memberships: { $elemMatch: { role: 'student', isVerified: true } } };
+        
+        collegeCountRaw = await User.countDocuments(query);
+
+        // mainCount: Active jobs posted by this recruiter
+        const postedJobs = await Job.find({ postedBy: userId }).select("_id");
+        const jobIds = postedJobs.map(job => job._id);
+        mainCount = jobIds.length;
+
+        // secondaryCount: Total applicants across all their jobs
+        secondaryCount = await Application.countDocuments({ job: { $in: jobIds } });
+    } 
+    
+    // 2. Logic for ALUMNI
+    else if (role === 'alumni') {
+        collegeCountRaw = await User.countDocuments({
+            memberships: { $elemMatch: { college: collegeId, role: 'student', isVerified: true } }
+        });
+
+        const postedJobs = await Job.find({ postedBy: userId }).select("_id");
+        const jobIds = postedJobs.map(job => job._id);
+        
+        mainCount = jobIds.length;
+        // For Alumni, secondaryCount is total students they've helped/hired (shortlisted/accepted)
+        secondaryCount = await Application.countDocuments({ 
+            job: { $in: jobIds }, 
+            status: { $in: ["shortlisted", "accepted"] } 
+        });
+    } 
+    
+    // 3. Logic for STUDENT
+    else {
+        collegeCountRaw = await User.countDocuments({
+            memberships: { $elemMatch: { college: collegeId, role: 'alumni', isVerified: true } }
+        });
+
+        mainCount = await Application.countDocuments({ applicant: userId });
+        secondaryCount = await Application.countDocuments({ 
+            applicant: userId, 
+            status: "shortlisted" 
+        });
+    }
+
+    // Format the college count (e.g., 1200 -> 1.2k+)
+    const collegeCountFormatted = collegeCountRaw > 999 
+        ? `${(collegeCountRaw / 1000).toFixed(1)}k+` 
+        : collegeCountRaw.toString();
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            collegeCount: collegeCountFormatted,
+            mainCount,      
+            secondaryCount  
+        }, "Real-time stats fetched successfully")
     );
 });

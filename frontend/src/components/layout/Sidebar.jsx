@@ -59,7 +59,7 @@ const Sidebar = () => {
         { icon: '🎛️', label: 'Dashboard', path: '/recruiter/dashboard' },
         { icon: '💼', label: 'Post Jobs', path: '/recruiter/post-jobs' },
         { icon: '🎓', label: 'Job Applicants', path: '/recruiter/JobApplicants' },
-        // 💬 Messages removed for Recruiters
+        { icon: '💬', label: 'Messages', path: '/messages' },
         { icon: '🏫', label: 'Join College', path: '/recruiter/join-college' },
       ];
     }
@@ -70,6 +70,7 @@ const Sidebar = () => {
       config.navItems = [
         { icon: '🎛️', label: 'Dashboard', path: `${config.basePath}/dashboard` },
         { icon: '👥', label: 'Alumni', path: `${config.basePath}/alumni` },
+        { icon: '🏛️', label: 'Campus Feed', path: `${config.basePath}/campus-feed` },
         { icon: '💬', label: 'Messages', path: '/messages' }, // ✅ Kept for Students/Alumni
       ];
 
@@ -87,10 +88,10 @@ const Sidebar = () => {
         );
       }
 
-      config.navItems.push(
-        { icon: '📈', label: 'Activity', path: `${config.basePath}/activity` },
-        { icon: '🔔', label: 'Notifications', path: `${config.basePath}/notifications` }
-      );
+      // config.navItems.push(
+      //   { icon: '📈', label: 'Activity', path: `${config.basePath}/activity` },
+      //   { icon: '🔔', label: 'Notifications', path: `${config.basePath}/notifications` }
+      // );
     }
 
     return config;

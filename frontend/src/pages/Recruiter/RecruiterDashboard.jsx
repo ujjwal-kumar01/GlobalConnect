@@ -38,12 +38,12 @@ const CollegePostCard = ({ post, onClick }) => (
     <p className="text-xs text-slate-500 line-clamp-2 mt-1 mb-3 text-left">{post.content}</p>
     <div className="mt-auto flex items-center justify-between pt-2 border-t border-slate-50">
       <span className="text-[10px] font-bold text-slate-400">{new Date(post.createdAt).toLocaleDateString()}</span>
-      <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest group-hover:translate-x-1 transition-transform">Read →</span>
+      <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest group-hover:translate-x-1 transition-transform">Details →</span>
     </div>
   </div>
 );
 
-const Dashboard = () => {
+const RecruiterDashboard = () => {
   const { user } = useUser();
   const { notifications } = useSocket();
   const navigate = useNavigate();
@@ -56,9 +56,8 @@ const Dashboard = () => {
   const [selectedPost, setSelectedPost] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  const isAlumni = user?.activeMembership?.role === 'alumni';
-  const collegeName = user?.activeMembership?.college?.name || "IIIT Una";
-  const displayName = user?.fullName || user?.name || "User";
+  const companyName = user?.company || "Your Organization";
+  const displayName = user?.fullName || user?.name || "Recruiter";
 
   const fetchDashboardData = async (page = 1) => {
     try {
@@ -73,7 +72,8 @@ const Dashboard = () => {
         posts: postsRes.data.data.posts || []
       });
       setPagination(postsRes.data.data.pagination || {});
-      setStats(statsRes.data.data || { mainCount: 0, secondaryCount: 0, collegeCount: "1.2k+" });
+      // stats.mainCount = Active Jobs, stats.secondaryCount = Total Applicants
+      setStats(statsRes.data.data || { mainCount: 0, secondaryCount: 0, collegeCount: "2.5k+" });
     } catch (error) {
       console.error('Error fetching dashboard data', error);
     } finally {
@@ -97,56 +97,58 @@ const Dashboard = () => {
       {/* 1. Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <span className="text-orange-500 font-bold text-xs uppercase tracking-[0.2em]">Live Insights</span>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight mt-1">Hi, {displayName.split(' ')[0]}! 👋</h1>
+          <span className="text-orange-500 font-bold text-xs uppercase tracking-[0.2em]">Recruitment Hub</span>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight mt-1">Welcome, {displayName.split(' ')[0]}!</h1>
           <p className="text-slate-500 mt-2 font-medium">
-            {isAlumni 
-              ? `You're empowering the ${collegeName} talent ecosystem.` 
-              : `Tracking your journey at ${collegeName}.`}
+            Managing talent acquisition for <span className="text-slate-900 font-bold">{companyName}</span>.
           </p>
         </div>
         <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm px-5 flex items-center gap-3 w-fit">
-           <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></div>
-           <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{collegeName}</span>
+           <div className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></div>
+           <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Hiring Mode Active</span>
         </div>
       </div>
 
       {/* 2. Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
-            icon="💬" 
-            title="Unread Messages" 
-            value={notifications.length} 
-            trend={notifications.length > 0 ? "New Activity" : "Up to date"} 
-            iconBg="bg-emerald-50 text-emerald-600" 
+            icon="📢" 
+            title="Active Job Posts" 
+            value={stats.mainCount} 
+            trend="Live Openings" 
+            iconBg="bg-blue-50 text-blue-600" 
         />
         
         <StatCard 
-            icon="🎓" 
-            title={isAlumni ? "Verified Students" : "Active Alumni"} 
-            value={stats.collegeCount} 
-            trend="Real-time" 
-            iconBg="bg-blue-50 text-blue-600" 
+            icon="👥" 
+            title="Total Applicants" 
+            value={stats.secondaryCount} 
+            trend="All Time" 
+            iconBg="bg-orange-50 text-orange-600" 
         />
 
-        {isAlumni ? (
-            <>
-                <StatCard icon="💼" title="Total Jobs Posted" value={stats.mainCount} trend="Internal" iconBg="bg-orange-50 text-orange-600" />
-                <StatCard icon="🏆" title="Students Hired" value={stats.secondaryCount} trend="Platform Impact" iconBg="bg-purple-50 text-purple-600" />
-            </>
-        ) : (
-            <>
-                <StatCard icon="📄" title="Jobs Applied" value={stats.mainCount} trend="Active" iconBg="bg-orange-50 text-orange-600" />
-                <StatCard icon="🎯" title="Shortlisted" value={stats.secondaryCount} trend="Selection Rate" iconBg="bg-purple-50 text-purple-600" />
-            </>
-        )}
+        <StatCard 
+            icon="💬" 
+            title="Unread Inquiries" 
+            value={notifications.length} 
+            trend={notifications.length > 0 ? "Response Needed" : "Inbox Clear"} 
+            iconBg="bg-emerald-50 text-emerald-600" 
+        />
+
+        <StatCard 
+            icon="🎓" 
+            title="Campus Talent Pool" 
+            value={stats.collegeCount} 
+            trend="Verified Students" 
+            iconBg="bg-purple-50 text-purple-600" 
+        />
       </div>
 
-      {/* 3. Campus Highlights with Pagination */}
+      {/* 3. Campus Highlights / Placement News */}
       <section className="space-y-6">
         <div className="flex items-center justify-between px-2">
           <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-            Campus Highlights <span className="text-orange-500 text-sm font-bold uppercase tracking-widest">Official</span>
+            Placement Cell Updates <span className="text-orange-500 text-sm font-bold uppercase tracking-widest">Official</span>
           </h2>
           <div className="flex items-center gap-2">
             <button 
@@ -172,7 +174,7 @@ const Dashboard = () => {
             <CollegePostCard key={post._id} post={post} onClick={setSelectedPost} />
           )) : (
             <div className="col-span-full bg-slate-50 border border-dashed border-slate-200 rounded-[2rem] py-12 text-center text-slate-400 italic font-medium">
-              No recent campus updates to show.
+              No recent campus updates from the placement cell.
             </div>
           )}
         </div>
@@ -181,10 +183,10 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
         
         <div className="xl:col-span-2 space-y-10">
-          {/* 4. RECOMMENDATIONS SECTION */}
+          {/* 4. RECOMMENDED CANDIDATES SECTION */}
           <div>
             <h2 className="text-lg font-black text-slate-900 mb-5">
-              {isAlumni ? "Discover Campus Talent" : "Verified Alumni Mentors"}
+              Top Potential Candidates
             </h2>
             <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden divide-y divide-slate-50">
               {data.recommendations.map(rec => (
@@ -198,9 +200,9 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <h4 onClick={() => navigate(`/profile/${rec.id}`)} className="text-md font-bold text-slate-900 hover:text-orange-600 transition-colors cursor-pointer">
-                        {rec.name || "Campus Member"}
+                        {rec.name || "Student Name"}
                       </h4>
-                      <p className="text-xs text-slate-400 font-bold uppercase mt-1">{rec.role} • {rec.company}</p>
+                      <p className="text-xs text-slate-400 font-bold uppercase mt-1">{rec.role} • Class of 2026</p>
                     </div>
                   </div>
                   
@@ -212,7 +214,7 @@ const Dashboard = () => {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
                     </button>
                     <button onClick={() => navigate(`/profile/${rec.id}`)} className="px-4 py-2 text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white rounded-xl hover:bg-orange-600 transition-all">
-                      Profile
+                      View CV
                     </button>
                   </div>
                 </div>
@@ -225,44 +227,42 @@ const Dashboard = () => {
             <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl transition-all group-hover:bg-orange-500/20"></div>
             <div className="relative z-10 max-w-lg">
               <h2 className="text-3xl font-black text-white mb-4 leading-tight">
-                {isAlumni ? "Grow Your Organization" : "Direct Referral Requests"}
+                Scale Your Engineering Team
               </h2>
               <p className="text-slate-400 text-sm font-medium mb-8 leading-relaxed opacity-80">
-                {isAlumni 
-                  ? "Post new openings at your company and hire directly from the IIIT Una student pool. Your referrals build our prestige."
-                  : "Connect with verified alumni at companies like Google, Microsoft, and Amazon. Ask for referrals or industry insights."}
+                Instantly post new career opportunities, internships, or full-time roles to the IIIT Una student and alumni portal.
               </p>
               <button 
-                onClick={() => navigate(isAlumni ? "/student/post-jobs" : "/student/alumni")} 
+                onClick={() => navigate("/recruiter/post-jobs")} 
                 className="bg-orange-500 text-white font-black px-10 py-4 rounded-2xl shadow-xl hover:bg-white hover:text-slate-900 transition-all active:scale-95 uppercase text-xs tracking-widest"
               >
-                {isAlumni ? "Hire Now" : "Find Referrals"}
+                Post a Job Now
               </button>
             </div>
           </div>
         </div>
 
-        {/* 5. Right Column: Static Insight / Idea Section */}
+        {/* 5. Right Column: Static Recruitment Outlook */}
         <div className="xl:col-span-1 space-y-10">
           <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
              <div className="flex items-center justify-between mb-6">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                   Industry Outlook
+                   Industry Demand
                 </h3>
                 <span className="text-orange-500 font-black text-xs">Trending</span>
              </div>
              
-             {/* Progress Visualization (Static Concept) */}
+             {/* Progress Visualization */}
              <div className="space-y-5">
                 {[
-                  { label: "Full Stack", val: 92 },
-                  { label: "AI & Data", val: 88 },
-                  { label: "Product Management", val: 75 }
+                  { label: "Frontend (React/Next)", val: 85 },
+                  { label: "Backend (Node/Go)", val: 94 },
+                  { label: "DevOps & Cloud", val: 72 }
                 ].map((item, idx) => (
                   <div key={idx}>
                     <div className="flex justify-between text-[10px] font-bold mb-1.5 uppercase">
                       <span className="text-slate-500">{item.label}</span>
-                      <span className="text-slate-900">Demand Index</span>
+                      <span className="text-slate-900">High Demand</span>
                     </div>
                     <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
                       <div 
@@ -276,20 +276,20 @@ const Dashboard = () => {
              
              <div className="mt-10 pt-8 border-t border-slate-50">
                <p className="text-sm font-bold text-slate-900 leading-relaxed italic">
-                 "The best way to predict the future is to create it."
+                 "Hiring is the most important thing you do. You are the average of the people you hire."
                </p>
                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-2">
-                 — Peter Drucker
+                 — Sam Altman
                </p>
              </div>
           </div>
 
           <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2.5rem] p-8 shadow-xl">
-             <h3 className="text-white font-black text-sm uppercase tracking-widest mb-4 text-orange-500">Professional Tip</h3>
+             <h3 className="text-white font-black text-sm uppercase tracking-widest mb-4 text-orange-500">Recruiter Tip</h3>
              <p className="text-slate-400 text-xs font-medium leading-loose">
-               Networking isn't just about connecting people. It's about connecting people with people, people with ideas, and people with opportunities. 
+               Shortlisting candidates with verified GitHub repositories and branch-specific certifications significantly reduces time-to-hire.
                <br/><br/>
-               Keep your profile updated to stay visible in the alumni talent pool.
+               Use the "Message" feature to schedule quick virtual screening calls directly.
              </p>
           </div>
         </div>
@@ -318,8 +318,8 @@ const Dashboard = () => {
             <div className="p-6 border-t border-slate-50 bg-slate-50/50 flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-slate-100">🎓</div>
               <div>
-                <p className="text-xs font-black text-slate-900">{collegeName}</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Official Publication</p>
+                <p className="text-xs font-black text-slate-900">Placement Cell</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Campus Recruitment Update</p>
               </div>
             </div>
           </div>
@@ -330,4 +330,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default RecruiterDashboard;

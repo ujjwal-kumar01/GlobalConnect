@@ -42,6 +42,9 @@ import MemberManagement from './pages/CollegeAdmin/StudentManagement.jsx'
 import JobApplicants from './pages/Recruiter/JobApplicants.jsx'
 import StudentApplications from './pages/Student/AppliedApplications.jsx'
 import Messages from './pages/Messages.jsx'
+import CampusChat from './pages/CampusChat.jsx'
+import AdminDashboard from './pages/CollegeAdmin/AdminDashboard.jsx'
+import RecruiterDashboard from './pages/Recruiter/RecruiterDashboard.jsx'
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -77,7 +80,7 @@ const router = createBrowserRouter(
         </Route>
 
         {/* 🔥 UPDATED: Messages restricted to only Students and Alumni */}
-        <Route element={<ProtectedRoute allowedRoles={['student', 'alumni']} />}>
+        <Route element={<ProtectedRoute allowedRoles={['student', 'alumni','recruiter']} />}>
           <Route path="messages" element={<ContentLayout />}>
             <Route index element={<Messages />} />
           </Route>
@@ -90,6 +93,7 @@ const router = createBrowserRouter(
         <Route path="student" element={<ContentLayout />} >
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="alumni" element={<Alumni />} />
+          <Route path="campus-feed" element={<CampusChat />} />
           
           {/* STUDENTS ONLY */}
           <Route element={<ProtectedRoute allowedRoles={['student']} />}>
@@ -108,7 +112,7 @@ const router = createBrowserRouter(
       {/* 🏢 Recruiter Portal */}
       <Route element={<ProtectedRoute allowedRoles={['recruiter']} />}>
         <Route path="recruiter" element={<ContentLayout />} >
-          <Route path="dashboard" element={<Dashboard />} /> 
+          <Route path="dashboard" element={<RecruiterDashboard />} /> 
           <Route path="JobApplicants" element={<JobApplicants />} />
           <Route path="post-jobs" element={<PostJob />} />
           <Route path="join-college" element={<JoinCollege />} />
@@ -118,7 +122,7 @@ const router = createBrowserRouter(
       {/* 🛡️ Admin Portal */}
       <Route element={<ProtectedRoute allowedRoles={['admin', 'super_admin']} />}>
         <Route path="admin" element={<ContentLayout />} >
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="RecruiterManagement" element={<RecruiterManagement />} />
           <Route path="MemberManagement" element={<MemberManagement />} />
           
