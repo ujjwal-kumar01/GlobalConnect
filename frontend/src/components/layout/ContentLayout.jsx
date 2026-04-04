@@ -8,10 +8,9 @@ const ContentLayout = () => {
   return (
     <div className="flex h-screen bg-white font-sans overflow-hidden">
 
-      {/* Sidebar hidden on mobile, visible on medium screens and up */}
-      <div className="hidden md:flex">
-        <Sidebar />
-      </div>
+      {/* 🔥 FIX: Removed the "hidden md:flex" wrapper! 
+          The Sidebar is now smart enough to handle its own mobile visibility. */}
+      <Sidebar />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50/50">

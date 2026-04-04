@@ -4,6 +4,32 @@ import axios from 'axios';
 
 const UserContext = createContext();
 
+// This acts as a global memory bridge between Header and Sidebar
+let isOpen = false;
+const listeners = new Set();
+
+export const openSidebar = () => {
+  isOpen = true;
+  listeners.forEach((listener) => listener(isOpen));
+};
+
+export const closeSidebar = () => {
+  isOpen = false;
+  listeners.forEach((listener) => listener(isOpen));
+};
+
+// Custom hook so any component can listen to the changes
+export const useSidebar = () => {
+  const [state, setState] = useState(isOpen);
+
+  useEffect(() => {
+    listeners.add(setState);
+    return () => listeners.delete(setState);
+  }, []);
+
+  return { isSidebarOpen: state, closeSidebar };
+};
+
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('user');

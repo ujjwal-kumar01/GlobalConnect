@@ -73,7 +73,7 @@ const Dashboard = () => {
         posts: postsRes.data.data.posts || []
       });
       setPagination(postsRes.data.data.pagination || {});
-      setStats(statsRes.data.data || { mainCount: 0, secondaryCount: 0, collegeCount: "1.2k+" });
+      setStats(statsRes.data.data || { mainCount: 0, secondaryCount: 0, collegeCount: "--" });
     } catch (error) {
       console.error('Error fetching dashboard data', error);
     } finally {

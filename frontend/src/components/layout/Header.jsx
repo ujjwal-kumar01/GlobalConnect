@@ -1,19 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useUser } from '../../context/UserContext';
-import { useSocket } from '../../context/SocketContext'; 
+import { useUser,openSidebar } from '../../context/UserContext';
+import { useSocket } from '../../context/SocketContext';
+
 
 const Header = () => {
-  const { user, logout } = useUser(); 
-  const { notifications } = useSocket(); 
+  const { user, logout } = useUser();
+  const { notifications } = useSocket();
   const navigate = useNavigate();
-  
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Close profile dropdown if clicked outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -24,15 +24,13 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Role Logic
   const role = user?.activeMembership?.role;
-  // 🔥 UPDATED: Added recruiter to the allowed messaging roles
   const canAccessMessages = role === 'student' || role === 'alumni' || role === 'recruiter';
 
   const getBasePath = () => {
     if (role === 'admin' || role === 'super_admin') return '/admin';
     if (role === 'recruiter') return '/recruiter';
-    return '/student'; 
+    return '/student';
   };
 
   const basePath = getBasePath();
@@ -44,7 +42,6 @@ const Header = () => {
 
   const displayName = user?.fullName || user?.name || "Guest User";
   const hasUnreadNotifications = user?.unreadNotifications && user.unreadNotifications.length > 0;
-  
   const unreadMessageCount = notifications?.length || 0;
 
   const handleLogout = async () => {
@@ -62,33 +59,45 @@ const Header = () => {
   };
 
   return (
-    <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-6 lg:px-10 shrink-0 relative z-20 font-sans">
-      
-      {/* Left: 'ACTIVE NETWORK' INDICATOR */}
-      <div className="flex-1 max-w-2xl flex items-center gap-4">
-        <div className="w-10 h-10 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center border border-orange-100">
+    <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-4 md:px-6 lg:px-10 shrink-0 relative z-20 font-sans">
+      {/* Left: Mobile Burger + 'ACTIVE NETWORK' */}
+      <div className="flex-1 min-w-0 flex items-center gap-3 sm:gap-4">
+        
+        {/* 🔥 FIX: Clean onClick calling the store directly */}
+        <button
+          type="button"
+          onClick={() => {
+            openSidebar();
+          }}
+          className="md:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-50 hover:text-orange-500 rounded-lg transition-colors focus:outline-none"
+          aria-label="Open Menu"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+
+        <div className="w-10 h-10 bg-orange-50 text-orange-500 rounded-xl hidden sm:flex items-center justify-center border border-orange-100 shrink-0">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
         </div>
-        <div className="text-left">
+        <div className="text-left min-w-0">
           <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none mb-1">Active Network</p>
-          <p className="text-sm font-bold text-slate-900 leading-none">
+          <p className="text-sm font-bold text-slate-900 leading-tight truncate">
             {user?.activeMembership?.college?.name || "Global Connect Campus"}
           </p>
         </div>
       </div>
 
       {/* Right: Quick Actions & Profile */}
-      <div className="flex items-center gap-4 sm:gap-6 ml-4 shrink-0">
-        
-        {/* 🔥 UPDATED: Messages Link - Now visible to Recruiters as well */}
+      <div className="flex items-center gap-1 sm:gap-4 shrink-0 ml-2">
         {canAccessMessages && (
-          <Link 
-            to="/messages" 
+          <Link
+            to="/messages"
             className="text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-all relative p-2 rounded-xl"
             title="Messages"
           >
             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+              <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
             </svg>
             {unreadMessageCount > 0 && (
               <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-sm">
@@ -97,40 +106,38 @@ const Header = () => {
             )}
           </Link>
         )}
-        
-        {/* Notifications Link */}
-        <Link 
+
+        <Link
           to={`${basePath}/notifications`}
           className="text-slate-400 hover:text-orange-500 hover:bg-orange-50 transition-all relative p-2 rounded-xl"
           title="Notifications"
         >
           <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+            <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
           </svg>
           {hasUnreadNotifications && (
             <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white"></span>
           )}
         </Link>
-        
+
         <div className="h-8 w-px bg-slate-200 mx-1 hidden sm:block"></div>
 
-        {/* User Profile Dropdown */}
         <div className="relative" ref={dropdownRef}>
-          <button 
+          <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className={`flex items-center gap-3 p-1.5 rounded-xl transition-all ${isProfileOpen ? 'bg-slate-50 ring-2 ring-orange-500/20' : 'hover:bg-slate-50'}`}
+            className={`flex items-center gap-2 sm:gap-3 p-1 sm:p-1.5 rounded-xl transition-all ${isProfileOpen ? 'bg-slate-50 ring-2 ring-orange-500/20' : 'hover:bg-slate-50'}`}
           >
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-slate-900 leading-tight">{displayName}</p>
               <p className="text-[11px] text-slate-500 font-medium mt-0.5">{formatRole(role)}</p>
             </div>
-            
-            <img 
-              src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=fdba74&color=c2410c`} 
-              alt={displayName} 
-              className="w-10 h-10 rounded-full border border-slate-200 object-cover bg-white" 
+
+            <img
+              src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=fdba74&color=c2410c`}
+              alt={displayName}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-slate-200 object-cover bg-white shrink-0"
             />
-            
+
             <svg className={`w-4 h-4 text-slate-400 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
             </svg>
@@ -139,11 +146,11 @@ const Header = () => {
           {isProfileOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl py-2 z-50">
               <div className="px-4 py-3 border-b border-slate-50 sm:hidden">
-                <p className="text-sm font-bold text-slate-900">{displayName}</p>
+                <p className="text-sm font-bold text-slate-900 truncate">{displayName}</p>
                 <p className="text-xs text-slate-500">{formatRole(role)}</p>
               </div>
-              
-              <Link 
+
+              <Link
                 to={`/account/profile`}
                 onClick={() => setIsProfileOpen(false)}
                 className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-orange-600 hover:bg-orange-50 transition-colors"
@@ -151,10 +158,10 @@ const Header = () => {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                 My Profile
               </Link>
-              
+
               <div className="h-px bg-slate-100 my-1"></div>
-              
-              <button 
+
+              <button
                 onClick={handleLogout}
                 disabled={isLoggingOut}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
@@ -169,7 +176,6 @@ const Header = () => {
             </div>
           )}
         </div>
-
       </div>
     </header>
   );

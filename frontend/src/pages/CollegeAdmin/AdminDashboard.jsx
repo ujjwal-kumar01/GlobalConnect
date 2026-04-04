@@ -98,7 +98,7 @@ const Dashboard = () => {
       const res = await axios.get('/api/admin/stats/overview', { withCredentials: true });
       setStats(res.data.data);
     } catch (err) {
-      setStats({ members: "2,450", recruiters: "128", broadcasts: "0", pending: "12" });
+      setStats({ members: "--", recruiters: "--", broadcasts: "--", pending: "--" });
     }
   };
 

@@ -73,7 +73,7 @@ const RecruiterDashboard = () => {
       });
       setPagination(postsRes.data.data.pagination || {});
       // stats.mainCount = Active Jobs, stats.secondaryCount = Total Applicants
-      setStats(statsRes.data.data || { mainCount: 0, secondaryCount: 0, collegeCount: "2.5k+" });
+      setStats(statsRes.data.data || { mainCount: 0, secondaryCount: 0, collegeCount: "0" });
     } catch (error) {
       console.error('Error fetching dashboard data', error);
     } finally {

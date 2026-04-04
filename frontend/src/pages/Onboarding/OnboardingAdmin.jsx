@@ -62,10 +62,10 @@ const OnboardingAdmin = () => {
       } catch (error) {
         console.warn("Backend failed to load colleges. Using fallback data.");
         setColleges([
-          { _id: '1', name: "Stanford University" },
-          { _id: '2', name: "Massachusetts Institute of Technology (MIT)" },
-          { _id: '3', name: "Harvard University" },
-          { _id: '4', name: "University of California, Berkeley" }
+          // { _id: '1', name: "Stanford University" },
+          // { _id: '2', name: "Massachusetts Institute of Technology (MIT)" },
+          // { _id: '3', name: "Harvard University" },
+          // { _id: '4', name: "University of California, Berkeley" }
         ]);
       } finally {
         setIsSearching(false);

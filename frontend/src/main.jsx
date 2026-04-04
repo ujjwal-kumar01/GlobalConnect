@@ -28,7 +28,7 @@ import ContentLayout from './components/layout/ContentLayout.jsx'
 import ProtectedRoute from './components/layout/ProtectedRoute.jsx'
 
 // Feature Pages
-import Dashboard from './pages/Student/Dashboard.jsx' 
+import Dashboard from './pages/Student/Dashboard.jsx'
 import Alumni from './pages/Student/Alumni.jsx'
 import Jobs from './pages/Student/Jobs.jsx'
 import { GoogleOAuthProvider } from '@react-oauth/google'
@@ -45,17 +45,21 @@ import Messages from './pages/Messages.jsx'
 import CampusChat from './pages/CampusChat.jsx'
 import AdminDashboard from './pages/CollegeAdmin/AdminDashboard.jsx'
 import RecruiterDashboard from './pages/Recruiter/RecruiterDashboard.jsx'
+import PublicRoute from './components/layout/PublicRoute.jsx'
 
 const router = createBrowserRouter(
   createRoutesFromElements(
     <Route path='/' element={<App />} >
-      
+
       {/* 🟢 Public Routes */}
       <Route index element={<Home />} />
-      <Route path="login" element={<LoginPage />} />
-      <Route path="register" element={<RegisterPage />} />
+      <Route element={<PublicRoute />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Route>
+
       <Route path="verify" element={<VerifyEmailPage />} />
-      
+
       {/* 🟡 Onboarding Routes */}
       <Route path="onboarding" element={<OnboardingLayout />}>
         <Route index element={<Onboarding />} />
@@ -68,7 +72,7 @@ const router = createBrowserRouter(
 
       {/* 🟣 Shared Portal - Auth Guard */}
       <Route element={<ProtectedRoute allowedRoles={['student', 'alumni', 'recruiter', 'admin', 'super_admin']} />}>
-        
+
         {/* The logged-in user's own settings/profile */}
         <Route path="account" element={<ContentLayout />} >
           <Route path="profile" element={<UserProfile />} />
@@ -80,21 +84,21 @@ const router = createBrowserRouter(
         </Route>
 
         {/* 🔥 UPDATED: Messages restricted to only Students and Alumni */}
-        <Route element={<ProtectedRoute allowedRoles={['student', 'alumni','recruiter']} />}>
+        <Route element={<ProtectedRoute allowedRoles={['student', 'alumni', 'recruiter']} />}>
           <Route path="messages" element={<ContentLayout />}>
             <Route index element={<Messages />} />
           </Route>
         </Route>
-        
+
       </Route>
-      
+
       {/* 🔵 Student/Alumni Portal - Base */}
       <Route element={<ProtectedRoute allowedRoles={['student', 'alumni']} />}>
         <Route path="student" element={<ContentLayout />} >
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="alumni" element={<Alumni />} />
           <Route path="campus-feed" element={<CampusChat />} />
-          
+
           {/* STUDENTS ONLY */}
           <Route element={<ProtectedRoute allowedRoles={['student']} />}>
             <Route path="jobs" element={<Jobs />} />
@@ -112,7 +116,7 @@ const router = createBrowserRouter(
       {/* 🏢 Recruiter Portal */}
       <Route element={<ProtectedRoute allowedRoles={['recruiter']} />}>
         <Route path="recruiter" element={<ContentLayout />} >
-          <Route path="dashboard" element={<RecruiterDashboard />} /> 
+          <Route path="dashboard" element={<RecruiterDashboard />} />
           <Route path="JobApplicants" element={<JobApplicants />} />
           <Route path="post-jobs" element={<PostJob />} />
           <Route path="join-college" element={<JoinCollege />} />
@@ -125,7 +129,7 @@ const router = createBrowserRouter(
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="RecruiterManagement" element={<RecruiterManagement />} />
           <Route path="MemberManagement" element={<MemberManagement />} />
-          
+
           {/* SUPER ADMIN ONLY */}
           <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
             <Route path="manage-admins" element={<AdminManagement />} />
@@ -142,7 +146,7 @@ createRoot(document.getElementById('root')).render(
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}>
       <UserProvider>
         <SocketProvider>
-        <RouterProvider router={router} />
+          <RouterProvider router={router} />
         </SocketProvider>
       </UserProvider>
     </GoogleOAuthProvider>
